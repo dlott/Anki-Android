@@ -40,15 +40,14 @@
 
 -->
 <resources>
-  <string name="connection_needed">Připojení k Internetu nenalezeno</string>
+  <string name="youre_offline">Jste v režimu offline</string>
   <string name="currently_downloading">Právě se stahuje</string>
   <string name="starting_download">Zahájení stahování ...</string>
   <string name="downloading">Probíhá stahování...</string>
   <string name="paused">Pozastaveno</string>
   <string name="downloaded">Staženo</string>
-  <string name="error">Chyba</string>
+  <string name="vague_error">Chyba</string>
   <string name="cancelling">Probíhá zrušení...</string>
-  <string name="connection_error_title">Pozor</string>
   <string name="connection_error_return_message">Došlo k síťové chybě. Zkuste akci opakovat, zrušit nebo se vrátit na předchozí obrazovku.</string>
   <string name="retry">Opakovat</string>
   <string name="cancel">Zrušit</string>
@@ -65,7 +64,8 @@
   <string name="download_button_return">Zpět</string>
   <string name="connection_error_message">Došlo k síťové chybě.</string>
   <string name="sync_log_db_error">Došlo k chybě databáze.</string>
-  <string name="no_user_password_error_message">Chcete-li pokračovat v této operaci, musíte mít AnkiWeb účet a být přihlášen.</string>
+  <string name="not_logged_in_title">Přihlasit se k AnkiWeb</string>
+  <string name="login_create_account_message">Musíte se přihlásit k účtu AnkiWeb. Účet můžete vytvořit v dalším kroku.</string>
   <string name="username">Emailová adresa</string>
   <string name="username_repeat">Zopakujte e-mailovou adresu</string>
   <string name="password">Heslo</string>
@@ -79,19 +79,18 @@
   <string name="alert_logging_message">Probíhá přihlašování, čekejte prosím...</string>
   <string name="invalid_username_password">Neplatná e-mailová adresa nebo heslo.</string>
   <string name="login_generic_error">Přihlášení se nezdařilo.</string>
-  <string name="reset_password">Reset password</string>
+  <string name="reset_password">Obnovit heslo</string>
   <string name="download_finished">Stahování dokončeno</string>
   <string name="personaldeckpicker_title">Otevřít online balíček</string>
   <string name="shareddeckpicker_title">Vyberte balíček, který chcete stáhnout</string>
   <string name="downloaddeck_search">Hledat</string>
   <string name="preferences_title">Nastavení</string>
-  <string name="deckpreferences_title">Předvolby balíčků</string>
+  <string name="deckpreferences_title">Možnosti pro XXX</string>
   <string name="sync_conflict_message">Vaše balíčky zde a na AnkiWeb se liší natolik, že nemohou být sloučeny dohromady, takže je nutné přepsat balíčky jedné strany druhou.\n\nChcete použít balíčky odtud nebo balíčky z AnkiWeb?</string>
   <string name="sync_conflict_local">Odeslat</string>
   <string name="sync_conflict_remote">Stáhnout</string>
   <string name="sync_conflict_remote_confirm">Opravdu chcete stáhnout kolekci ze serveru? Mějte na paměti, že tato akce přepíše místní kolekci.</string>
   <string name="sync_conflict_local_confirm">Opravdu chcete nahrát místní kolekci? Mějte na paměti, že tato akce přepíše vaši kolekci na serveru.</string>
-  <string name="sync_conflict_cancel">Zrušit synchronizaci</string>
   <string name="sync_prepare_syncing">Příprava synchronizace...</string>
   <string name="sync_preparing_full_sync_message">Příprava úplné synchronizace...</string>
   <string name="sync_uploading_message">Nahrávání...</string>
@@ -107,7 +106,7 @@
   <string name="sync_log_old_version">Synchronizační protokol se změnil, proveďte aktualizaci na poslední verzi AnkiDroid. Viz %s</string>
   <string name="sync_conflict_title">Konflikt synchronizace</string>
   <string name="sync_no_changes_message">Nenalezeny žádné změny.</string>
-  <string name="sync_database_success">Kolekce úspěšně synchronizována</string>
+  <string name="sync_database_acknowledge">Kolekce synchronizována</string>
   <string name="sync_log_error_fix">Během synchronizace nastala chyba%s.\n\nPokud nastává trvale, můžete provést plnou synchronizaci, která pravděpodobně opraví tento problém. Uvědomte si, že přepíše místní kolekci nebo kolekci na serveru.\nJestliže opravdu chcete provést plnou synchronizaci, zvolte, zda chcete uložit místní kolekci nebo stáhnout kolekci ze serveru.</string>
   <string name="sync_log_error_specific">Chyba synchronizace, typ:%1$s, zpráva:%2$s</string>
   <string name="sync_corrupt_database">Databáze je poškozena. Opravte jí předtím, než se jí znovu pokusíte synchronizovat.\n\nPodívejte se na %s pro více informací o opravě.</string>

@@ -39,18 +39,31 @@
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <resources>
-  <string name="btn_continue">계속하기</string>
   <string name="app_name">AnkiDroid</string>
-  <string name="attention">주의</string>
-  <string name="yes">예</string>
-  <string name="no">아니오</string>
-  <string name="ok">확인</string>
+  <string name="app_name_anki">Anki</string>
+  <string name="app_name_droid">Droid</string>
   <string name="studyoptions_deck_name">덱 이름</string>
   <string name="studyoptions_due_today">오늘 학습할 카드:</string>
   <string name="studyoptions_new_total">전체 새 카드:</string>
   <string name="studyoptions_total_cards">전체 카드:</string>
   <string name="studyoptions_eta">예상 소요 시간 (분):</string>
-  <string name="studyoptions_start">Study Now</string>
+  <string name="studyoptions_start">Study</string>
+  <plurals name="deckpicker_title">
+    <item quantity="one">%1$d card due (%2$s)</item>
+    <item quantity="other">%1$d cards due (%2$s)</item>
+  </plurals>
+  <plurals name="deckpicker_title_minutes">
+    <item quantity="one">%d min.</item>
+    <item quantity="other">%d분.</item>
+  </plurals>
+  <plurals name="deckpicker_due">
+    <item quantity="one">%1$d of %2$d due</item>
+    <item quantity="other">%2$d개 중 %1$d개 남음</item>
+  </plurals>
+  <plurals name="reviewer_window_title">
+    <item quantity="one">%d minute left</item>
+    <item quantity="other">%d분 남음</item>
+  </plurals>
   <string name="type_answer_hint">Type answer</string>
   <string name="show_answer">정답 보기</string>
   <string name="ease1_successive">다시</string>
@@ -58,15 +71,12 @@
   <string name="ease3_successive">괜찮음</string>
   <string name="ease3_learning">쉬움</string>
   <string name="studyoptions_congrats_undo">%s 취소</string>
-  <string name="studyoptions_congrats_unbury">Unbury</string>
-  <string name="studyoptions_congrats_custom_study">맞춤 학습</string>
-  <string name="studyoptions_congrats_open_other_deck">다른 덱 열기</string>
   <string name="card_unsuspended">카드가 다시 활성화 됨</string>
   <string name="card_suspended">카드가 다시 비활성화됨</string>
   <string name="menu_rotate">화면 회전</string>
-  <string name="menu_import">Import file</string>
+  <string name="menu_import">파일 넣기</string>
   <string name="undo">실행 취소</string>
-  <string name="undo_action_review">복습</string>
+  <string name="undo_action_review">last review</string>
   <string name="undo_action_edit">노트 편집</string>
   <string name="undo_action_bury">노트 나중에 보기</string>
   <string name="undo_action_suspend_card">카드 미루기</string>
@@ -80,8 +90,8 @@
   <string name="contextmenu_deckpicker_reset_reset_message">언어 재설정</string>
   <string name="contextmenu_deckpicker_optimize_deck">데이터베이스 최적화</string>
   <string name="contextmenu_deckpicker_rename_deck">덱 이름 바꾸기</string>
-  <string name="contextmenu_deckpicker_collapse_deck">Hide Subdecks</string>
-  <string name="contextmenu_deckpicker_inflate_deck">Show Subdecks</string>
+  <string name="contextmenu_deckpicker_collapse_deck">Hide subdecks</string>
+  <string name="contextmenu_deckpicker_inflate_deck">Show subdecks</string>
   <string name="contextmenu_deckpicker_set_custom_dictionary">사용자 정의 사전 설정</string>
   <string name="menu_add">Add</string>
   <string name="menu_add_note">Add note</string>
@@ -91,10 +101,11 @@
   <string name="menu_preferences">환경 설정</string>
   <string name="menu_about">Ankidroid 정보</string>
   <string name="menu_dismiss_note">노트 무시하기...</string>
-  <string name="menu_bury_card">Bury Card</string>
+  <string name="menu_bury_card">Bury card</string>
   <string name="menu_bury_note">노트 나중에 보기</string>
   <string name="menu_suspend_card">카드 비활성화하기</string>
   <string name="menu_suspend_note">노트 미뤄두기</string>
+  <string name="menu_save_note">Save note</string>
   <string name="menu_delete_note">노트 삭제하기</string>
   <string name="delete_note_message">다음 노트와 그 노트의 모든 카드를 정말로 삭제하시겠습니까?\n%s</string>
   <string name="menu_edit_card">카드 편집하기</string>
@@ -108,6 +119,22 @@
   <string name="studyoptions_feedback">피드백</string>
   <string name="studyoptions_load_tutorial_deck">도움말 만들기</string>
   <string name="night_mode">야간 모드</string>
+  <string-array name="next_review_s">
+    <item>1초</item>
+    <item>1분</item>
+    <item>1시간</item>
+    <item>1일</item>
+    <item>1개월</item>
+    <item>1년</item>
+  </string-array>
+  <string-array name="next_review_p">
+    <item>%s초</item>
+    <item>%s분</item>
+    <item>%s시간</item>
+    <item>%s일</item>
+    <item>%s개월</item>
+    <item>%s년</item>
+  </string-array>
   <string name="visit">방문하기</string>
   <string name="later">나중에</string>
   <string name="download">다운로드</string>
@@ -125,6 +152,18 @@
 그러면 단기적으로 공부할 양이 증가한다는 것을 명심하세요.
 </string>
   <string name="studyoptions_congrats_custom">평상시 일정을 넘어 더 공부하려면, 맞춤 학습 버튼을 누르십시오.</string>
+  <plurals name="studyoptions_congrats_message">
+    <item quantity="one">Tomorrow there will be: %1$d card to review and %2$s.\n Estimated time: %3$s</item>
+    <item quantity="other">내일의 학습 일정: 복습할 카드 %1$d개 및 %2$s.\n 예상 소요 시간: %3$s</item>
+  </plurals>
+  <plurals name="studyoptions_congrats_new_cards">
+    <item quantity="one">%1$d new card</item>
+    <item quantity="other">%1$d개의 새로운 카드</item>
+  </plurals>
+  <plurals name="studyoptions_congrats_eta">
+    <item quantity="one">Estimated time: %1$d min.</item>
+    <item quantity="other">예상 소요 시간: %1$d분.</item>
+  </plurals>
   <string name="sd_card_not_mounted">SD카드가 삽입되지 않았습니다.\n\n내장 메모리에 컬렉션을 저장할 수 있지만, 파일에 쉽게 접근할 수 없으므로 권장되지 않습니다. 환경 설정에서 이를 활성화할 수 있습니다 (이 텍스트를 눌러서 설정 창을 엽니다).</string>
   <string name="studyoptions_options">학습 옵션</string>
   <string name="empty_cloze_warning">이 노트를 편집하여서 cloze 빈칸을 추가하세요. (%1$s)</string>
@@ -141,48 +180,5 @@
   <string name="confirm">확정</string>
   <string name="internet">인터넷</string>
   <string name="pc">PC</string>
-  <string-array name="next_review_s">
-    <item>1초</item>
-    <item>1분</item>
-    <item>1시간</item>
-    <item>1일</item>
-    <item>1개월</item>
-    <item>1년</item>
-  </string-array>
-  <string-array name="next_review_p">
-    <item>%s초</item>
-    <item>%s분</item>
-    <item>%s시간</item>
-    <item>%s일</item>
-    <item>%s개월</item>
-    <item>%s년</item>
-  </string-array>
-  <plurals name="deckpicker_title">
-    <item quantity="one">%2$d 중 1개 (%3$s초)</item>
-    <item quantity="other">%2$d개 중 %1$d개 남음 (%3$s)</item>
-  </plurals>
-  <plurals name="deckpicker_title_minutes">
-    <item quantity="one">1분.</item>
-    <item quantity="other">%d분.</item>
-  </plurals>
-  <plurals name="deckpicker_due">
-    <item quantity="one">%2$d개 중 1개 남음</item>
-    <item quantity="other">%2$d개 중 %1$d개 남음</item>
-  </plurals>
-  <plurals name="reviewer_window_title">
-    <item quantity="one">1분 남음</item>
-    <item quantity="other">%d분 남음</item>
-  </plurals>
-  <plurals name="studyoptions_congrats_message">
-    <item quantity="one">내일의 학습 일정: 복습할 카드 1개 및 %2$s.\n 예상 소요 시간: %3$s</item>
-    <item quantity="other">내일의 학습 일정: 복습할 카드 %1$d개 및 %2$s.\n 예상 소요 시간: %3$s</item>
-  </plurals>
-  <plurals name="studyoptions_congrats_new_cards">
-    <item quantity="one">1개의 새로운 카드</item>
-    <item quantity="other">%1$d개의 새로운 카드</item>
-  </plurals>
-  <plurals name="studyoptions_congrats_eta">
-    <item quantity="one">예상 소요 시간: 1분.</item>
-    <item quantity="other">예상 소요 시간: %1$d분.</item>
-  </plurals>
+  <string name="title_activity_graphical_activity">Statistical chart</string>
 </resources>

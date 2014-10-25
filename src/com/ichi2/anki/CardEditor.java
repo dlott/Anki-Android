@@ -23,7 +23,6 @@ import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
-import android.content.DialogInterface.OnDismissListener;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
@@ -32,37 +31,31 @@ import android.content.res.Resources.NotFoundException;
 import android.graphics.Color;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
 import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.PopupMenu.OnMenuItemClickListener;
 import android.text.Editable;
-import android.text.InputFilter;
-import android.text.Spanned;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
-import android.view.Gravity;
 import android.view.KeyEvent;
 import android.view.Menu;
 import android.view.MenuInflater;
 import android.view.MenuItem;
 import android.view.View;
-import android.view.ViewGroup;
 import android.view.WindowManager;
 import android.widget.AdapterView;
 import android.widget.AdapterView.OnItemClickListener;
 import android.widget.Button;
-import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
-import android.widget.EditText;
-import android.widget.FrameLayout;
 import android.widget.ImageButton;
-import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ListView;
 import android.widget.SimpleAdapter;
 import android.widget.TextView;
 
 import com.ichi2.anim.ActivityTransitionAnimation;
+import com.ichi2.anki.dialogs.TagsDialog;
+import com.ichi2.anki.dialogs.TagsDialog.TagsDialogListener;
 import com.ichi2.anki.multimediacard.IMultimediaEditableNote;
 import com.ichi2.anki.multimediacard.activity.EditFieldActivity;
 import com.ichi2.anki.multimediacard.fields.AudioField;
@@ -93,16 +86,15 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
-import java.util.HashMap;
 import java.util.LinkedList;
 import java.util.List;
-import java.util.TreeSet;
+import java.util.Map;
 
 /**
  * Allows the user to edit a fact, for instance if there is a typo. A card is a presentation of a fact, and has two
  * sides: a question and an answer. Any number of fields can appear on each side. When you add a fact to Anki, cards
  * which show that fact are generated. Some models generate one card, others generate more than one.
- *
+ * 
  * @see http://ichi2.net/anki/wiki/KeyTermsAndConcepts#Cards
  */
 public class CardEditor extends ActionBarActivity {
@@ -118,7 +110,6 @@ public class CardEditor extends ActionBarActivity {
     public static final String EXTRA_FIELD_INDEX = "multim.card.ed.extra.field.index";
     public static final String EXTRA_FIELD = "multim.card.ed.extra.field";
     public static final String EXTRA_WHOLE_NOTE = "multim.card.ed.extra.whole.note";
-
 
     private static final int DIALOG_DECK_SELECT = 0;
     private static final int DIALOG_MODEL_SELECT = 1;
@@ -150,7 +141,6 @@ public class CardEditor extends ActionBarActivity {
     public static final int REQUEST_INTENT_ADD = 1;
     public static final int REQUEST_MULTIMEDIA_EDIT = 2;
 
-
     private boolean mChanged = false;
 
     /**
@@ -170,7 +160,6 @@ public class CardEditor extends ActionBarActivity {
 
     private Note mEditorNote;
     public static Card mCurrentEditedCard;
-    private List<String> mCurrentTags;
     private List<String> mSelectedTags;
     private long mCurrentDid;
 
@@ -188,14 +177,12 @@ public class CardEditor extends ActionBarActivity {
     private LinkedList<FieldEditText> mEditFields;
 
     private int mCardItemBackground;
-    private ArrayList<HashMap<String, String>> mIntentInformation;
+    private final List<Map<String, String>> mIntentInformation = new ArrayList<Map<String, String>>();
     private SimpleAdapter mIntentInformationAdapter;
     private StyledDialog mIntentInformationDialog;
     private StyledDialog mDeckSelectDialog;
 
     private String[] allTags;
-    private EditText mNewTagEditText;
-    private StyledDialog mTagsDialog;
 
     private StyledProgressDialog mProgressDialog;
     private StyledOpenCollectionDialog mOpenCollectionDialog;
@@ -282,6 +269,13 @@ public class CardEditor extends ActionBarActivity {
                 // RuntimeException occured on adding note
                 closeCardEditor(DeckPicker.RESULT_DB_ERROR);
             }
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
         }
     };
 
@@ -503,7 +497,7 @@ public class CardEditor extends ActionBarActivity {
         ((LinearLayout) findViewById(R.id.CardEditorTagButton)).setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
-                showDialog(DIALOG_TAGS_SELECT);
+                showDialogFragment(DIALOG_TAGS_SELECT);
             }
         });
 
@@ -611,6 +605,13 @@ public class CardEditor extends ActionBarActivity {
             @Override
             public void onProgressUpdate(DeckTask.TaskData... values) {
             }
+
+
+            @Override
+            public void onCancelled() {
+                // TODO Auto-generated method stub
+                
+            }
         }, new DeckTask.TaskData(AnkiDroidApp.getCurrentAnkiDroidDirectory() + AnkiDroidApp.COLLECTION_PATH));
     }
 
@@ -655,6 +656,9 @@ public class CardEditor extends ActionBarActivity {
 
 
     private void saveNote() {
+        if (mSelectedTags == null) {
+            mSelectedTags = new ArrayList<String>();
+        }
         // treat add new note and edit existing note independently
         if (mAddNote) {
             // load all of the fields into the note
@@ -665,9 +669,9 @@ public class CardEditor extends ActionBarActivity {
                 // Save deck to model
                 mEditorNote.model().put("did", mCurrentDid);
                 // Save tags to model
-                mEditorNote.setTagsFromStr(tagsAsString(mCurrentTags));
+                mEditorNote.setTagsFromStr(tagsAsString(mSelectedTags));
                 JSONArray ja = new JSONArray();
-                for (String t : mCurrentTags) {
+                for (String t : mSelectedTags) {
                     ja.put(t);
                 }
                 mCol.getModels().current().put("tags", ja);
@@ -695,13 +699,13 @@ public class CardEditor extends ActionBarActivity {
                 modified = modified | updateField(f);
             }
             // added tag?
-            for (String t : mCurrentTags) {
+            for (String t : mSelectedTags) {
                 modified = modified || !mEditorNote.hasTag(t);
             }
             // removed tag?
-            modified = modified || mEditorNote.getTags().size() > mCurrentTags.size();
+            modified = modified || mEditorNote.getTags().size() > mSelectedTags.size();
             if (modified) {
-                mEditorNote.setTagsFromStr(tagsAsString(mCurrentTags));
+                mEditorNote.setTagsFromStr(tagsAsString(mSelectedTags));
                 // set a flag so that changes to card object will be written to DB later via onActivityResult() in
                 // CardBrowser
                 mChanged = true;
@@ -762,8 +766,8 @@ public class CardEditor extends ActionBarActivity {
             }
         }
         if (mCaller != CALLER_CARDEDITOR_INTENT_ADD) {
-            mIntentInformation = MetaDB.getIntentInformation(this);
-            menu.findItem(R.id.action_saved_notes).setEnabled(mIntentInformation.size() > 0);
+            updateIntentInformation();
+            menu.findItem(R.id.action_saved_notes).setEnabled(!mIntentInformation.isEmpty());
         }
         return super.onCreateOptionsMenu(menu);
     }
@@ -813,6 +817,7 @@ public class CardEditor extends ActionBarActivity {
 
         }
     }
+
 
     // ----------------------------------------------------------------------------
     // CUSTOM METHODS
@@ -882,6 +887,32 @@ public class CardEditor extends ActionBarActivity {
     }
 
 
+    private DialogFragment showDialogFragment(int id) {
+        DialogFragment dialogFragment = null;
+        String tag = null;
+        switch (id) {
+            case DIALOG_TAGS_SELECT:
+                if (mSelectedTags == null) {
+                    mSelectedTags = new ArrayList<String>();
+                }
+                ArrayList<String> tags = new ArrayList<String>(mCol.getTags().all());
+                ArrayList<String> selTags = new ArrayList<String>(mSelectedTags);
+                TagsDialog dialog = com.ichi2.anki.dialogs.TagsDialog.newInstance(TagsDialog.TYPE_ADD_TAG, selTags,
+                        tags);
+                dialog.setTagsDialogListener(new TagsDialogListener() {
+                    @Override
+                    public void onPositive(List<String> selectedTags, int option) {
+                        mSelectedTags = selectedTags;
+                        updateTags();
+                    }
+                });
+                dialogFragment = dialog;
+        }
+        dialogFragment.show(getSupportFragmentManager(), tag);
+        return dialogFragment;
+    }
+
+
     @Override
     protected Dialog onCreateDialog(int id) {
         StyledDialog dialog = null;
@@ -889,102 +920,6 @@ public class CardEditor extends ActionBarActivity {
         StyledDialog.Builder builder = new StyledDialog.Builder(this);
 
         switch (id) {
-            case DIALOG_TAGS_SELECT:
-                builder.setTitle(R.string.card_details_tags);
-                builder.setPositiveButton(res.getString(R.string.select), new OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String tag = mNewTagEditText.getText().toString();
-                        mCurrentTags = mTagsDialog.getCheckedItems();
-                        if (tag.length() != 0) {
-                            if (!mEditorNote.hasTag(tag)) {
-                                mCurrentTags.add(tag);
-                            }
-                        }
-                        updateTags();
-                    }
-                });
-                builder.setNegativeButton(res.getString(R.string.dialog_cancel), null);
-                builder.setOnDismissListener(new OnDismissListener() {
-                    @Override
-                    public void onDismiss(DialogInterface dialog) {
-                        mNewTagEditText.setText("");
-                    }
-                });
-
-                mNewTagEditText = new EditText(this);
-                mNewTagEditText.setHint(R.string.add_new_filter_tags);
-
-                mNewTagEditText.addTextChangedListener(new TextWatcher() {
-                    @Override
-                    public void onTextChanged(CharSequence s, int start, int before, int count) {
-                        mTagsDialog.filterList(s.toString());
-                    }
-
-
-                    @Override
-                    public void beforeTextChanged(CharSequence s, int start, int count, int after) {
-                    }
-
-
-                    @Override
-                    public void afterTextChanged(Editable s) {
-                    }
-                });
-
-                InputFilter filter = new InputFilter() {
-                    @Override
-                    public CharSequence filter(CharSequence source, int start, int end, Spanned dest, int dstart,
-                            int dend) {
-                        for (int i = start; i < end; i++) {
-                            if (source.charAt(i) == ' ' || source.charAt(i) == ',') {
-                                return "";
-                            }
-                        }
-                        return null;
-                    }
-                };
-                mNewTagEditText.setFilters(new InputFilter[] { filter });
-
-                ImageView mAddTextButton = new ImageView(this);
-                mAddTextButton.setImageResource(R.drawable.ic_addtag);
-                mAddTextButton.setOnClickListener(new View.OnClickListener() {
-                    @Override
-                    public void onClick(View v) {
-                        String tag = mNewTagEditText.getText().toString();
-                        if (tag.length() != 0) {
-                            if (mEditorNote.hasTag(tag)) {
-                                mNewTagEditText.setText("");
-                                return;
-                            }
-                            mCurrentTags.add(tag);
-                            actualizeTagDialog(mTagsDialog);
-                            mNewTagEditText.setText("");
-                        }
-                    }
-                });
-
-                FrameLayout frame = new FrameLayout(this);
-                FrameLayout.LayoutParams params = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT,
-                        ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.RIGHT | Gravity.CENTER_VERTICAL);
-                params.rightMargin = 10;
-                mAddTextButton.setLayoutParams(params);
-                frame.addView(mNewTagEditText);
-                frame.addView(mAddTextButton);
-
-                builder.setView(frame, false, true);
-                builder.setSelectAllListener(new OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                        mTagsDialog.setItemListChecked(isChecked);
-                        mCurrentTags = mTagsDialog.getCheckedItems();
-                    }
-                });
-
-                dialog = builder.create();
-                mTagsDialog = dialog;
-                break;
-
             case DIALOG_DECK_SELECT:
                 ArrayList<CharSequence> dialogDeckItems = new ArrayList<CharSequence>();
                 // Use this array to know which ID is associated with each
@@ -1132,7 +1067,7 @@ public class CardEditor extends ActionBarActivity {
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 Intent intent = new Intent(CardEditor.this, CardEditor.class);
                 intent.putExtra(EXTRA_CALLER, CALLER_CARDEDITOR_INTENT_ADD);
-                HashMap<String, String> map = mIntentInformation.get(position);
+                Map<String, String> map = mIntentInformation.get(position);
                 intent.putExtra(EXTRA_CONTENTS, map.get("fields"));
                 intent.putExtra(EXTRA_ID, map.get("id"));
                 startActivityForResult(intent, REQUEST_INTENT_ADD);
@@ -1161,39 +1096,12 @@ public class CardEditor extends ActionBarActivity {
             @Override
             public void onClick(DialogInterface dialog, int arg1) {
                 MetaDB.resetIntentInformation(CardEditor.this);
-                mIntentInformation.clear();
+                updateIntentInformation();
                 dialog.dismiss();
             }
         });
-        StyledDialog dialog = builder.create();
-        mIntentInformationDialog = dialog;
-        return dialog;
-    }
-
-
-    @Override
-    protected void onPrepareDialog(int id, Dialog dialog) {
-        StyledDialog ad = (StyledDialog) dialog;
-        switch (id) {
-            case DIALOG_TAGS_SELECT:
-                if (mEditorNote == null) {
-                    dialog = null;
-                    return;
-                }
-
-                if (mSelectedTags == null) {
-                    mSelectedTags = new ArrayList<String>();
-                }
-                mCurrentTags = new ArrayList<String>(mSelectedTags);
-                actualizeTagDialog(ad);
-                break;
-
-            case DIALOG_INTENT_INFORMATION:
-                // dirty fix for dialog listview not being actualized
-                mIntentInformationDialog = createDialogIntentInformation(new StyledDialog.Builder(this), getResources());
-                ad = mIntentInformationDialog;
-                break;
-        }
+        mIntentInformationDialog = builder.create();
+        return mIntentInformationDialog;
     }
 
 
@@ -1213,19 +1121,11 @@ public class CardEditor extends ActionBarActivity {
                 if (resultCode != RESULT_CANCELED) {
                     mChanged = true;
                     String id = data.getStringExtra(EXTRA_ID);
-                    if (id != null) {
-                        for (int i = 0; i < mIntentInformation.size(); i++) {
-                            if (mIntentInformation.get(i).get("id").endsWith(id)) {
-                                if (MetaDB.removeIntentInformation(CardEditor.this, id)) {
-                                    mIntentInformation.remove(i);
-                                    mIntentInformationAdapter.notifyDataSetChanged();
-                                }
-                                break;
-                            }
-                        }
+                    if (id != null && MetaDB.removeIntentInformation(CardEditor.this, id)) {
+                        updateIntentInformation();
                     }
                 }
-                if (mIntentInformation.size() > 0) {
+                if (!mIntentInformation.isEmpty()) {
                     showDialog(DIALOG_INTENT_INFORMATION);
                 }
                 break;
@@ -1251,42 +1151,16 @@ public class CardEditor extends ActionBarActivity {
     }
 
 
-    private void actualizeTagDialog(StyledDialog ad) {
-        // without this the dialog goes up the screen in a way that the user isn't able to see the full item list.
-        ad.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-        TreeSet<String> tags = new TreeSet<String>(String.CASE_INSENSITIVE_ORDER);
-        for (String tag : mCol.getTags().all()) {
-            tags.add(tag);
+    /**
+     * Reads the saved data from the {@link MetaDB} and updates the data of the according {@link ListView}.
+     */
+    private void updateIntentInformation() {
+        mIntentInformation.clear();
+        mIntentInformation.addAll(MetaDB.getIntentInformation(this));
+        Log.d(AnkiDroidApp.TAG, "Saved data list size: " + mIntentInformation.size());
+        if (mIntentInformationAdapter != null) {
+            mIntentInformationAdapter.notifyDataSetChanged();
         }
-
-        tags.addAll(mCurrentTags);
-        int len = tags.size();
-        allTags = new String[len];
-        boolean[] checked = new boolean[len];
-        int i = 0;
-        for (String t : tags) {
-            allTags[i++] = t;
-            checked[i - 1] = mCurrentTags.contains(t);
-        }
-        ad.setMultiChoiceItems(allTags, checked, new DialogInterface.OnClickListener() {
-            @Override
-            public void onClick(DialogInterface arg0, int which) {
-                String tag = allTags[which];
-                if (mCurrentTags.contains(tag)) {
-                    Log.i(AnkiDroidApp.TAG, "unchecked tag: " + tag);
-                    mCurrentTags.remove(tag);
-                } else {
-                    Log.i(AnkiDroidApp.TAG, "checked tag: " + tag);
-                    mCurrentTags.add(tag);
-                }
-            }
-        }, new OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                mTagsDialog.setItemListChecked(isChecked);
-                mCurrentTags = mTagsDialog.getCheckedItems();
-            }
-        });
     }
 
 
@@ -1322,18 +1196,19 @@ public class CardEditor extends ActionBarActivity {
         }
     }
 
-    private void setMMButtonListener(ImageButton mediaButton, final int index){
+
+    private void setMMButtonListener(ImageButton mediaButton, final int index) {
         mediaButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 if (mEditorNote.items()[index][1].length() > 0) {
-                    // If the field already exists then we start the field editor, which figures out the type automatically
+                    // If the field already exists then we start the field editor, which figures out the type
+                    // automatically
                     IMultimediaEditableNote mNote = NoteService.createEmptyNote(mEditorNote.model());
                     NoteService.updateMultimediaNoteFromJsonNote(mEditorNote, mNote);
                     IField field = mNote.getField(index);
                     startMultimediaFieldEditor(index, mNote, field);
-                }
-                else {
+                } else {
                     // Otherwise we make a popup menu allowing the user to choose between audio/image/text field
                     PopupMenuWithIcons popup = new PopupMenuWithIcons(CardEditor.this, v, true);
                     MenuInflater inflater = popup.getMenuInflater();
@@ -1344,7 +1219,7 @@ public class CardEditor extends ActionBarActivity {
                             IMultimediaEditableNote mNote = NoteService.createEmptyNote(mEditorNote.model());
                             NoteService.updateMultimediaNoteFromJsonNote(mEditorNote, mNote);
                             IField field = mNote.getField(index);
-                            switch( item.getItemId() ) {
+                            switch (item.getItemId()) {
                                 case R.id.menu_multimedia_audio:
                                     field = new AudioField();
                                     mNote.setField(index, field);
@@ -1369,13 +1244,15 @@ public class CardEditor extends ActionBarActivity {
         });
     }
 
-    private void startMultimediaFieldEditor(final int index, IMultimediaEditableNote mNote, IField field){
+
+    private void startMultimediaFieldEditor(final int index, IMultimediaEditableNote mNote, IField field) {
         Intent editCard = new Intent(CardEditor.this, EditFieldActivity.class);
         editCard.putExtra(EXTRA_FIELD_INDEX, index);
         editCard.putExtra(EXTRA_FIELD, field);
         editCard.putExtra(EXTRA_WHOLE_NOTE, mNote);
         startActivityForResult(editCard, REQUEST_MULTIMEDIA_EDIT);
     }
+
 
     private void initFieldEditText(FieldEditText editText, int index, String[] values, Typeface customTypeface) {
         String name = values[0];
@@ -1488,14 +1365,12 @@ public class CardEditor extends ActionBarActivity {
                 mEditorNote = new Note(mCol, model);
                 mEditorNote.model().put("did", mCurrentDid);
                 mModelButton.setText(getResources().getString(R.string.CardEditorModel, model.getString("name")));
-                // Re-use tags when adding multiple notes
-                if (mCurrentTags == null) {
-                    mCurrentTags = new ArrayList<String>();
-                }
             } else {
                 mEditorNote = note;
                 mCurrentDid = mCurrentEditedCard.getDid();
-                mCurrentTags = mEditorNote.getTags();
+            }
+            if (mSelectedTags == null) {
+                mSelectedTags = mEditorNote.getTags();
             }
         } catch (JSONException e) {
             throw new RuntimeException(e);
@@ -1520,18 +1395,21 @@ public class CardEditor extends ActionBarActivity {
 
 
     private void updateTags() {
-        mSelectedTags = new ArrayList<String>(mCurrentTags);
+        if (mSelectedTags == null) {
+            mSelectedTags = new ArrayList<String>();
+        }
         mTagsButton.setText(getResources().getString(R.string.CardEditorTags,
-                mCol.getTags().join(mCol.getTags().canonify(mCurrentTags)).trim().replace(" ", ", ")));
+                mCol.getTags().join(mCol.getTags().canonify(mSelectedTags)).trim().replace(" ", ", ")));
     }
 
+
     private boolean updateField(FieldEditText field) {
-          String newValue = field.getText().toString().replace(FieldEditText.NEW_LINE, "<br>");
-          if (!mEditorNote.values()[field.getOrd()].equals(newValue)) {
-              mEditorNote.values()[field.getOrd()] = newValue;
-              return true;
-          }
-          return false;
+        String newValue = field.getText().toString().replace(FieldEditText.NEW_LINE, "<br>");
+        if (!mEditorNote.values()[field.getOrd()].equals(newValue)) {
+            mEditorNote.values()[field.getOrd()] = newValue;
+            return true;
+        }
+        return false;
     }
 
 

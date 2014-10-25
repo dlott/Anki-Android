@@ -33,11 +33,13 @@ import android.graphics.Color;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.media.AudioManager;
+import android.net.Uri;
 import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 import android.os.SystemClock;
 import android.os.Vibrator;
+import android.support.v4.widget.DrawerLayout;
 import android.text.ClipboardManager;
 import android.text.Editable;
 import android.text.Html;
@@ -62,21 +64,24 @@ import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.WindowManager;
 import android.view.inputmethod.EditorInfo;
-import android.webkit.JavascriptInterface;
+import android.view.inputmethod.InputMethodManager;
 import android.webkit.JsResult;
 import android.webkit.WebChromeClient;
 import android.webkit.WebView;
+import android.webkit.WebViewClient;
 import android.widget.Button;
 import android.widget.Chronometer;
 import android.widget.EditText;
 import android.widget.FrameLayout;
 import android.widget.LinearLayout;
+import android.widget.ListView;
 import android.widget.ProgressBar;
 import android.widget.RelativeLayout;
 import android.widget.TextView;
 
 import com.ichi2.anim.ActivityTransitionAnimation;
 import com.ichi2.anim.ViewAnimation;
+import com.ichi2.anki.exception.APIVersionException;
 import com.ichi2.anki.receiver.SdCardReceiver;
 import com.ichi2.anki.reviewer.ReviewerExtRegistry;
 import com.ichi2.async.DeckTask;
@@ -105,6 +110,8 @@ import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
 import java.lang.reflect.Method;
+import java.net.MalformedURLException;
+import java.net.URL;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.HashSet;
@@ -113,7 +120,7 @@ import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
-public abstract class AbstractFlashcardViewer extends AnkiActivity {
+public abstract class AbstractFlashcardViewer extends NavigationDrawerActivity {
 
     /**
      * Whether to save the content of the card in the file system.
@@ -185,6 +192,7 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
     private BroadcastReceiver mUnmountReceiver = null;
 
     private boolean mInBackground = false;
+    private boolean mReloadingCollection = false;
 
     /**
      * Variables to hold preferences
@@ -418,6 +426,10 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
         public void onClick(View view) {
             Log.i(AnkiDroidApp.TAG, "Flip card changed:");
             mTimeoutHandler.removeCallbacks(mShowAnswerTask);
+            // Explicitly hide the soft keyboard. It *should* be hiding itself automatically, but sometimes failed to do
+            // so.
+            InputMethodManager inputMethodManager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
+            inputMethodManager.hideSoftInputFromWindow(mAnswerField.getWindowToken(), 0);
             displayCardAnswer();
         }
     };
@@ -527,6 +539,13 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
                 closeReviewer(DeckPicker.RESULT_DB_ERROR, true);
             }
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+
+        }
     };
 
     private DeckTask.TaskListener mDismissCardHandler = new DeckTask.TaskListener() {
@@ -547,6 +566,13 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
                 closeReviewer(DeckPicker.RESULT_DB_ERROR, false);
             }
             mAnswerCardHandler.onPostExecute(result);
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+
         }
     };
 
@@ -617,6 +643,13 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
             if (mNoMoreCards) {
                 closeReviewer(RESULT_NO_MORE_CARDS, true);
             }
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+
         }
     };
 
@@ -713,6 +746,13 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
             // set the correct mark/unmark icon on action bar
             refreshActionBar();
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+
+        }
     };
 
 
@@ -800,12 +840,6 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
         Matcher m = sTypeAnsPat.matcher(buf);
         DiffEngine diffEngine = new DiffEngine();
         StringBuilder sb = new StringBuilder();
-        // A bit of clean-up.
-        userAnswer = Utils.stripHTMLMedia(userAnswer).trim();
-        correctAnswer = Utils.stripHTMLMedia(correctAnswer).trim();
-        userAnswer = AnkiDroidApp.getCompat().nfcNormalized(userAnswer);
-        correctAnswer = AnkiDroidApp.getCompat().nfcNormalized(correctAnswer);
-        // N.B. For API level <9 the NFC normalization is skipped. See also compat/CompatV[79].java.
         sb.append("<div");
         if (!mPrefWriteAnswers) {
             sb.append(" class=\"typeOff\"");
@@ -882,12 +916,19 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
         mChangeBorderStyle = Themes.getTheme() == Themes.THEME_ANDROID_LIGHT
                 || Themes.getTheme() == Themes.THEME_ANDROID_DARK;
 
+        // create inherited navigation drawer layout here so that it can be used by parent class
+        setContentView(R.layout.flashcard);
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.reviewer_drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.reviewer_left_drawer);
+        initNavigationDrawer();
+
         // The hardware buttons should control the music volume while reviewing.
         setVolumeControlStream(AudioManager.STREAM_MUSIC);
         // Try to load the collection
         Collection col = AnkiDroidApp.getCol();
         if (col == null) {
             // Reload the collection asynchronously, let onPostExecute method call initActivity()
+            mReloadingCollection = true;
             reloadCollection();
             return;
         } else {
@@ -904,7 +945,7 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
     protected void initActivity(Collection col) {
         mSched = col.getSched();
         mCollectionFilename = col.getPath();
-        mBaseUrl = Utils.getBaseUrl(col.getMedia().getDir());
+        mBaseUrl = Utils.getBaseUrl(col.getMedia().dir());
 
         restorePreferences();
 
@@ -922,7 +963,7 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
 
         mUseQuickUpdate = shouldUseQuickUpdate();
 
-        initLayout(R.layout.flashcard);
+        initLayout();
 
         setTitle();
 
@@ -954,6 +995,16 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
     }
 
 
+    private void deselectAllNavigationItems() {
+        // Deselect all entries in navigation drawer since the Reviewer isn't included in ND
+        for (int i=0; i< mDrawerList.getCount(); i++) {
+            mDrawerList.setItemChecked(i, false);
+        }
+        setTitle();
+        updateScreenCounts();
+    }
+
+
     // Saves deck each time Reviewer activity loses focus
     @Override
     protected void onPause() {
@@ -974,24 +1025,12 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
     protected void onResume() {
         mInBackground = false;
         super.onResume();
-        // Decks deck = DeckManager.getMainDeck();
-        // if (deck == null) {
-        // Log.e(AnkiDroidApp.TAG, "Reviewer: Deck already closed, returning to study options");
-        // closeReviewer(RESULT_DECK_CLOSED, false);
-        // return;
-        // }
-
-        // check if deck is already opened in big widget. If yes, reload card (to make sure it's not answered yet)
-        // if (DeckManager.deckIsOpenedInBigWidget(deck.getDeckPath()) && mCurrentCard != null && !mInEditor) {
-        // Log.i(AnkiDroidApp.TAG, "Reviewer: onResume: get card from big widget");
-        // blockControls();
-        // AnkiDroidWidgetBig.updateWidget(AnkiDroidWidgetBig.UpdateService.VIEW_NOT_SPECIFIED, true);
-        // DeckTask.launchDeckTask(DeckTask.TASK_TYPE_ANSWER_CARD, mAnswerCardHandler, new DeckTask.TaskData(0, deck,
-        // null));
-        // } else {
         restartTimer();
-        // }
-        //
+
+        if (!mReloadingCollection) {
+            // Do any tasks which depend on initActivity() completing successfully below
+            deselectAllNavigationItems();
+        }
     }
 
 
@@ -1105,6 +1144,10 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
                 } else {
                     finish();
                 }
+
+                // Do any tasks below which were postponed in onCreate() or onResume() due to reloadCollection()
+                deselectAllNavigationItems();
+                mReloadingCollection = false;
             }
 
 
@@ -1122,6 +1165,13 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
 
             @Override
             public void onProgressUpdate(DeckTask.TaskData... values) {
+            }
+
+
+            @Override
+            public void onCancelled() {
+                // TODO Auto-generated method stub
+
             }
         }, new DeckTask.TaskData(AnkiDroidApp.getCurrentAnkiDroidDirectory() + AnkiDroidApp.COLLECTION_PATH, 0, true));
     }
@@ -1201,6 +1251,12 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        // The action bar home/up action should open or close the drawer.
+        // ActionBarDrawerToggle will take care of this.
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+
         switch (item.getItemId()) {
 
             case android.R.id.home:
@@ -1515,9 +1571,7 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
 
 
     // Set the content view to the one provided and initialize accessors.
-    protected void initLayout(Integer layout) {
-        setContentView(layout);
-
+    protected void initLayout() {
         mMainLayout = findViewById(R.id.main_layout);
         Themes.setContentStyle(mMainLayout, Themes.CALLER_REVIEWER);
 
@@ -1660,7 +1714,6 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
         webView.getSettings().setSupportZoom(true);
         webView.getSettings().setJavaScriptEnabled(true);
         webView.setWebChromeClient(new AnkiDroidWebChromeClient());
-        webView.addJavascriptInterface(new JavaScriptInterface(this), "ankidroid");
         if (AnkiDroidApp.SDK_VERSION > 7) {
             webView.setFocusableInTouchMode(false);
         }
@@ -1670,6 +1723,36 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
         Log.i(AnkiDroidApp.TAG,
                 "Focusable = " + webView.isFocusable() + ", Focusable in touch mode = "
                         + webView.isFocusableInTouchMode());
+
+        // Filter any links using the custom "playsound" protocol defined in Sound.java.
+        // We play sounds through these links when a user taps the sound icon.
+        webView.setWebViewClient(new WebViewClient() {
+            @Override
+            public boolean shouldOverrideUrlLoading(WebView view, String url) {
+                if (url.startsWith("playsound:")) {
+                    // Send a message that will be handled on the UI thread.
+                    Message msg = Message.obtain();
+                    String soundPath = url.replaceFirst("playsound:", "");
+                    msg.obj = soundPath;
+                    sHandler.sendMessage(msg);
+                    return true;
+                }
+                try {
+                    new URL(url);  // dummy variable to check if the string looks like an url
+                } catch (MalformedURLException mue) {
+                    // Ignore malformed urls by handling them and then doing nothing.
+                    return true;
+                }
+                if (url.startsWith("file"))
+                {
+                    return false;  // Let the webview load files, i.e. local images.
+                }
+                Log.d(AnkiDroidApp.TAG, "Opening external link \"" + url + "\" with an Intent");
+                Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse(url));
+                startActivity(intent);
+                return true;
+            }
+        });
 
         return webView;
     }
@@ -2132,18 +2215,45 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
     }
 
 
-    protected String getAnswerText(String answer) {
+    /**
+     * Clean up the correct answer text, so it can be used for the comparison with the typed text
+     *
+     * @param answer The content of the field the text typed by the user is compared to.
+     * @return The correct answer text, with actual HTML and media references removed, and HTML entities unescaped.
+     */
+    protected String cleanCorrectAnswer(String answer) {
         if (answer == null || answer.equals("")) {
             return "";
         }
-
+        answer = answer.trim();
         Matcher matcher = sSpanPattern.matcher(Utils.stripHTMLMedia(answer));
         String answerText = matcher.replaceAll("");
         matcher = sBrPattern.matcher(answerText);
         answerText = matcher.replaceAll("\n");
         matcher = Sound.sSoundPattern.matcher(answerText);
         answerText = matcher.replaceAll("");
-        return answerText;
+        try {
+            return AnkiDroidApp.getCompat().nfcNormalized(answerText);
+        } catch (APIVersionException e) {
+            return answerText;
+        }
+    }
+
+    /**
+     * Clean up the typed answer text, so it can be used for the comparison with the correct answer
+     *
+     * @param answer The answer text typed by the user.
+     * @return The typed answer text, cleaned up.
+     */
+    protected String cleanTypedAnswer(String answer) {
+        if (answer == null || answer.equals("")) {
+            return "";
+        }
+        try {
+            return AnkiDroidApp.getCompat().nfcNormalized(answer.trim());
+        } catch (APIVersionException e) {
+            return answer.trim();
+        }
     }
 
 
@@ -2187,10 +2297,11 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
                 // reshape
                 mTypeCorrect = ArabicUtilities.reshapeSentence(mTypeCorrect, true);
             }
-            // Obtain the user answer and the correct answer
-            String userAnswer = getAnswerText(mAnswerField.getText().toString());
-            String correctAnswer = getAnswerText(mTypeCorrect);
+            // Clean up the user answer and the correct answer
+            String userAnswer = cleanTypedAnswer(mAnswerField.getText().toString());
+            String correctAnswer = cleanCorrectAnswer(mTypeCorrect);
             Log.i(AnkiDroidApp.TAG, "correct answer = " + correctAnswer);
+            Log.i(AnkiDroidApp.TAG, "user answer = " + userAnswer);
 
             answer = typeAnsAnswerFilter(answer, userAnswer, correctAnswer);
             displayString = enrichWithQADiv(answer, true);
@@ -2843,48 +2954,6 @@ public abstract class AbstractFlashcardViewer extends AnkiActivity {
             result.confirm();
             return true;
         }
-    }
-
-    public final class JavaScriptInterface {
-        private AbstractFlashcardViewer mCtx;
-
-
-        JavaScriptInterface(AbstractFlashcardViewer ctx) {
-            mCtx = ctx;
-        }
-
-
-        /**
-         * This is not called on the UI thread. Send a message that will be handled on the UI thread.
-         */
-        @JavascriptInterface
-        public void playSound(String soundPath) {
-            Message msg = Message.obtain();
-            msg.obj = soundPath;
-            sHandler.sendMessage(msg);
-        }
-
-
-        @JavascriptInterface
-        public int getAvailableWidth() {
-            if (mCtx.mAvailableInCardWidth == 0) {
-                mCtx.mAvailableInCardWidth = mCtx.calcAvailableInCardWidth();
-            }
-            return mCtx.mAvailableInCardWidth;
-        }
-    }
-
-
-    /** Calculate the width that is available to the webview for content */
-    public int calcAvailableInCardWidth() {
-        // The available width of the webview equals to the container's width, minus the container's padding
-        // divided by the default scale factor used by the WebView, and minus the WebView's padding
-        if (mCard != null && mCardFrame != null) {
-            return Math.round((mCardFrame.getWidth() - mCardFrame.getPaddingLeft() - mCardFrame.getPaddingRight()
-                    - mCard.getPaddingLeft() - mCard.getPaddingRight())
-                    / mCard.getScale());
-        }
-        return 0;
     }
 
 

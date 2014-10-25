@@ -23,12 +23,13 @@
 <!--  General Preferences -->
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android"
     xmlns:app="http://schemas.android.com/apk/res/com.ichi2.anki" >
-    <PreferenceScreen android:title="@string/pref_cat_general" >
+    <PreferenceScreen android:title="@string/pref_cat_general"
+        android:summary="@string/pref_cat_general_summ" >
         <EditTextPreference
             android:defaultValue="/sdcard/AnkiDroid"
             android:key="deckPath"
             android:summary="@string/col_path_summ"
-            android:title="@string/col_path" />    
+            android:title="@string/col_path" />
         <Preference
             android:dialogTitle="@string/sync_account"
             android:key="syncAccount"
@@ -54,7 +55,7 @@
             android:defaultValue=""
             android:key="language"
             android:summary="@string/language_summ"
-            android:title="@string/language" />     
+            android:title="@string/language" />
         <ListPreference
             android:defaultValue="2"
             android:entries="@array/error_reporting_choice_labels"
@@ -78,11 +79,12 @@
                 android:defaultValue="false"
                 android:key="widgetBlink"
                 android:title="@string/notification_minimum_cards_due_blink" />
-        </PreferenceCategory>            
+        </PreferenceCategory>
     </PreferenceScreen>
-    
+
     <!-- Reviewing Preferences -->
-    <PreferenceScreen android:title="@string/pref_cat_reviewing" >
+    <PreferenceScreen android:title="@string/pref_cat_reviewing"
+        android:summary="@string/pref_cat_reviewing_summ" >
         <PreferenceCategory android:title="@string/pref_cat_reviewer_behaviour" >
             <ListPreference
                 android:defaultValue=""
@@ -114,7 +116,7 @@
                 android:defaultValue="false"
                 android:key="writeAnswersDisable"
                 android:summary="@string/write_answers_disable_summ"
-                android:title="@string/write_answers_disable" />                 
+                android:title="@string/write_answers_disable" />
         </PreferenceCategory>
         <PreferenceCategory android:title="@string/pref_cat_flashcard" >
             <CheckBoxPreference
@@ -136,6 +138,15 @@
                 android:key="showEstimates"
                 android:summary="@string/show_estimates_summ"
                 android:title="@string/show_estimates" />
+            <com.hlidskialf.android.preference.SeekBarPreference
+                android:defaultValue="100"
+                android:key="answerButtonSize"
+                android:max="170"
+                android:summary="@string/button_size_summ"
+                android:text=" %"
+                android:title="@string/button_size"
+                app:interval="10"
+                app:min="100" />                
             <CheckBoxPreference
                 android:key="showProgress"
                 android:summary="@string/show_progress_summ"
@@ -163,7 +174,7 @@
                 android:summary="@string/whiteboard_black_summ"
                 android:title="@string/whiteboard_black" />
         </PreferenceCategory>
-        <PreferenceCategory android:title="@string/pref_cat_automatic_display" >        
+        <PreferenceCategory android:title="@string/pref_cat_automatic_display" >
             <CheckBoxPreference
                 android:defaultValue="false"
                 android:disableDependentsState="false"
@@ -186,71 +197,61 @@
                 android:title="@string/timeout_question_seconds" />
         </PreferenceCategory>
     </PreferenceScreen>
-    
+
     <!-- Fonts & Style Prefrences -->
-    <PreferenceScreen android:title="@string/pref_cat_fonts_formatting" >
-        <PreferenceCategory android:title="@string/pref_cat_fonts" >
-            <ListPreference
-                android:defaultValue=""
-                android:key="defaultFont"
-                android:shouldDisableView="true"
-                android:summary="@string/default_font_summ"
-                android:title="@string/default_font" />
-            <ListPreference
-                android:defaultValue="0"
-                android:key="overrideFontBehavior"
-                android:entries="@array/override_font_labels"
-                android:entryValues="@array/override_font_values"                
-                android:summary="@string/override_font_summ"
-                android:title="@string/override_font" />
-            <ListPreference
-                android:defaultValue=""
-                android:key="browserEditorFont"
-                android:summary="@string/pref_browser_editor_font_summ"
-                android:title="@string/pref_browser_editor_font" />
-        </PreferenceCategory>
-        <PreferenceCategory android:title="@string/pref_cat_fonts_size" >
-            <com.hlidskialf.android.preference.SeekBarPreference
-                android:defaultValue="100"
-                android:key="relativeDisplayFontSize"
-                android:max="150"
-                android:summary="@string/display_font_size_summ"
-                android:text=" %"
-                android:title="@string/display_font_size"
-                app:interval="10"
-                app:min="10" />
-            <com.hlidskialf.android.preference.SeekBarPreference
-                android:defaultValue="100"
-                android:key="relativeImageSize"
-                android:max="300"
-                android:summary="@string/image_size_summ"
-                android:text=" %"
-                android:title="@string/image_size"
-                app:interval="10"
-                app:min="50" />
-            <com.hlidskialf.android.preference.SeekBarPreference
-                android:defaultValue="100"
-                android:key="answerButtonSize"
-                android:max="170"
-                android:summary="@string/button_size_summ"
-                android:text=" %"
-                android:title="@string/button_size"
-                app:interval="10"
-                app:min="100" />
-            <com.hlidskialf.android.preference.SeekBarPreference
-                android:defaultValue="100"
-                android:key="relativeCardBrowserFontSize"
-                android:max="200"
-                android:summary="@string/card_browser_font_size_summ"
-                android:text=" %"
-                android:title="@string/card_browser_font_size"
-                app:interval="10"
-                app:min="10" />            
-        </PreferenceCategory>
-    </PreferenceScreen>        
-    
+    <PreferenceScreen android:title="@string/pref_cat_fonts"
+        android:key="font_preference_group"
+        android:summary="@string/pref_cat_fonts_summ">
+        <ListPreference
+            android:defaultValue=""
+            android:key="defaultFont"
+            android:shouldDisableView="true"
+            android:summary="@string/default_font_summ"
+            android:title="@string/default_font" />
+        <ListPreference
+            android:defaultValue="0"
+            android:key="overrideFontBehavior"
+            android:entries="@array/override_font_labels"
+            android:entryValues="@array/override_font_values"
+            android:summary="@string/override_font_summ"
+            android:title="@string/override_font" />
+        <ListPreference
+            android:defaultValue=""
+            android:key="browserEditorFont"
+            android:summary="@string/pref_browser_editor_font_summ"
+            android:title="@string/pref_browser_editor_font" />
+        <com.hlidskialf.android.preference.SeekBarPreference
+            android:defaultValue="100"
+            android:key="relativeDisplayFontSize"
+            android:max="150"
+            android:summary="@string/display_font_size_summ"
+            android:text=" %"
+            android:title="@string/display_font_size"
+            app:interval="10"
+            app:min="10" />
+        <com.hlidskialf.android.preference.SeekBarPreference
+            android:defaultValue="100"
+            android:key="relativeImageSize"
+            android:max="300"
+            android:summary="@string/image_size_summ"
+            android:text=" %"
+            android:title="@string/image_size"
+            app:interval="10"
+            app:min="50" />
+        <com.hlidskialf.android.preference.SeekBarPreference
+            android:defaultValue="100"
+            android:key="relativeCardBrowserFontSize"
+            android:max="200"
+            android:summary="@string/card_browser_font_size_summ"
+            android:text=" %"
+            android:title="@string/card_browser_font_size"
+            app:interval="10"
+            app:min="10" />
+    </PreferenceScreen>
+
     <!-- Navigation Prefrences -->
-    <PreferenceScreen android:title="@string/pref_cat_gestures" >
+    <PreferenceScreen android:title="@string/pref_cat_gestures"
+        android:summary="@string/pref_cat_gestures_summ" >
         <CheckBoxPreference
             android:defaultValue="false"
             android:disableDependentsState="false"
@@ -267,7 +268,7 @@
             android:text=""
             android:title="@string/swipe_sensitivity"
             app:interval="1"
-            app:min="20" />        
+            app:min="20" />
         <PreferenceCategory android:title="@string/pref_cat_actions" >
             <ListPreference
                 android:defaultValue="0"
@@ -351,15 +352,11 @@
                 android:title="@string/gestures_longclick" />
         </PreferenceCategory>
     </PreferenceScreen>
-    
+
     <!-- Advanced Preferences -->
-    <PreferenceScreen android:title="@string/pref_cat_advanced" >
+    <PreferenceScreen android:title="@string/pref_cat_advanced"
+        android:summary="@string/pref_cat_advanced_summ" >
         <PreferenceCategory android:title="@string/pref_cat_performance" >
-            <CheckBoxPreference
-                android:defaultValue="false"
-                android:key="cardBrowserNoSearchOnOpen"
-                android:summary="@string/pref_cardbrowser_skip_init_search_summ"
-                android:title="@string/pref_cardbrowser_skip_init_search" />
             <CheckBoxPreference
                 android:defaultValue="false"
                 android:key="safeDisplay"
@@ -394,14 +391,14 @@
                 app:interval="1"
                 app:min="1" />
         </PreferenceCategory>
-        <PreferenceCategory 
+        <PreferenceCategory
             android:key="category_workarounds"
             android:title="@string/pref_cat_workarounds" >
             <CheckBoxPreference
                 android:defaultValue="false"
                 android:key="inputWorkaround"
                 android:summary="@string/input_workaround_summ"
-                android:title="@string/input_workaround" />        
+                android:title="@string/input_workaround" />
             <CheckBoxPreference
                 android:defaultValue="false"
                 android:key="textSelectionLongclickWorkaround"
@@ -416,7 +413,7 @@
                 android:defaultValue="false"
                 android:key="fixArabicText"
                 android:summary="@string/fix_arabic_text_summ"
-                android:title="@string/fix_arabic_text" />      
+                android:title="@string/fix_arabic_text" />
         </PreferenceCategory>
         <PreferenceCategory android:title="@string/pref_cat_plugins" >
             <CheckBoxPreference
@@ -435,10 +432,10 @@
                 android:dialogIcon="@android:drawable/ic_dialog_alert"
                 android:dialogMessage="@string/reset_languages_question"
                 android:dialogTitle="@string/reset_languages"
-                android:negativeButtonText="@string/no"
-                android:positiveButtonText="@string/yes"
+                android:negativeButtonText="@string/dialog_cancel"
+                android:positiveButtonText="@string/dialog_positive_reset"
                 android:summary="@string/reset_languages_summ"
-                android:title="@string/reset_languages" />                
+                android:title="@string/reset_languages" />
             <CheckBoxPreference
                 android:defaultValue="false"
                 android:key="intentAdditionInstantAdd"
@@ -453,7 +450,7 @@
                 android:defaultValue="false"
                 android:key="convertFenText"
                 android:summary="@string/convert_fen_text_summ"
-                android:title="@string/convert_fen_text" />                  
+                android:title="@string/convert_fen_text" />
             <CheckBoxPreference
                 android:id="@+id/scrolling_buttons_checkbox"
                 android:defaultValue="false"
@@ -465,7 +462,10 @@
                 android:defaultValue="false"
                 android:key="double_scrolling"
                 android:summary="@string/double_scrolling_gap_summ"
-                android:title="@string/double_scrolling_gap" />         
-        </PreferenceCategory>     
+                android:title="@string/double_scrolling_gap" />
+        </PreferenceCategory>
     </PreferenceScreen>
+    <Preference 
+        android:key="about_dialog_preference"
+        android:title="@string/about_title" />
 </PreferenceScreen>

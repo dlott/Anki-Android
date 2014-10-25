@@ -16,7 +16,6 @@ package com.ichi2.anki;
 
 import android.app.Activity;
 import android.app.Dialog;
-import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
 import android.content.DialogInterface.OnClickListener;
@@ -27,12 +26,12 @@ import android.content.res.Resources;
 import android.graphics.Color;
 import android.graphics.Paint.Align;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.app.Fragment;
 import android.text.Html;
 import android.util.Log;
 import android.view.GestureDetector;
 import android.view.GestureDetector.SimpleOnGestureListener;
-import android.view.Gravity;
 import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuInflater;
@@ -41,19 +40,15 @@ import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.ViewGroup.LayoutParams;
-import android.view.WindowManager;
 import android.widget.Button;
-import android.widget.CompoundButton;
 import android.widget.EditText;
-import android.widget.ImageButton;
 import android.widget.LinearLayout;
-import android.widget.RadioButton;
-import android.widget.RadioGroup;
-import android.widget.RadioGroup.OnCheckedChangeListener;
 import android.widget.TextView;
 
 import com.ichi2.anim.ActivityTransitionAnimation;
 import com.ichi2.anim.ViewAnimation;
+import com.ichi2.anki.dialogs.TagsDialog;
+import com.ichi2.anki.dialogs.TagsDialog.TagsDialogListener;
 import com.ichi2.async.DeckTask;
 import com.ichi2.async.DeckTask.TaskData;
 import com.ichi2.charts.ChartBuilder;
@@ -77,14 +72,18 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.util.Collections;
-import java.util.Comparator;
+import java.util.ArrayList;
 import java.util.HashMap;
-import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 
 public class StudyOptionsFragment extends Fragment {
+    
+    // Container Activity must implement this interface
+    public interface OnStudyOptionsReloadListener {
+        public void loadStudyOptionsFragment(long deckId, Bundle cramConfig);
+        public void loadStudyOptionsFragment();
+    }
 
     /**
      * Available options performed by other activities
@@ -121,7 +120,6 @@ public class StudyOptionsFragment extends Fragment {
     /**
      * Preferences
      */
-    private int mStartedByBigWidget;
     private boolean mSwipeEnabled;
     private int mCurrentContentView = CONTENT_STUDY_OPTIONS;
     boolean mInvertedColors = false;
@@ -131,12 +129,12 @@ public class StudyOptionsFragment extends Fragment {
     /** Alerts to inform the user about different situations */
     private StyledProgressDialog mProgressDialog;
     private StyledOpenCollectionDialog mOpenCollectionDialog;
-    private StyledDialog mTagsDialog;
 
     /**
      * UI elements for "Study Options" view
      */
     private View mStudyOptionsView;
+    private View mDeckInfoLayout;
     private Button mButtonStart;
     private Button mButtonCustomStudy;
     private Button mButtonUnbury;
@@ -154,23 +152,11 @@ public class StudyOptionsFragment extends Fragment {
     private LinearLayout mSmallChart;
     private LinearLayout mDeckCounts;
     private LinearLayout mDeckChart;
-    private ImageButton mAddNote;
-    private ImageButton mCardBrowser;
     private Button mDeckOptions;
     private Button mCramOptions;
-    private ImageButton mStatisticsButton;
-    private EditText mDialogEditText = null;
-    /**
-     * UI elements for "Congrats" view
-     */
-    private View mCongratsView;
-    // private View mLearnMoreView;
-    // private View mReviewEarlyView;
     private TextView mTextCongratsMessage;
-    private Button mButtonCongratsUndo;
-    private Button mButtonCongratsUnbury;
-    private Button mButtonCongratsOpenOtherDeck;
-    private Button mButtonCongratsCustomStudy;
+    private View mCongratsLayout;
+
 
     private View mCustomStudyDetailsView;
     private TextView mCustomStudyTextView1;
@@ -178,11 +164,9 @@ public class StudyOptionsFragment extends Fragment {
     private EditText mCustomStudyEditText;
 
     private String[] allTags;
-    private HashSet<String> mSelectedTags;
     private String mSearchTerms;
+
     private EditText mSearchEditText;
-    private RadioGroup mSelectWhichCards;
-    private int mSelectedOption = -1;
 
     /**
      * Swipe Detection
@@ -216,58 +200,6 @@ public class StudyOptionsFragment extends Fragment {
                     resetAndUpdateValuesFromDeck();
                     mButtonUnbury.setVisibility(View.GONE);
                     return;
-                    // case R.id.studyoptions_limitup:
-                    // timeLimit = (mCol.getTimeLimit() / 60);
-                    // mCol.setTimeLimit((timeLimit + 1) * 60);
-                    // mToggleLimitToggle.setChecked(true);
-                    // mToggleLimitToggle.setText(String.valueOf(timeLimit + 1));
-                    // return;
-                    // case R.id.studyoptions_limitdown:
-                    // timeLimit = (mCol.getTimeLimit() / 60);
-                    // if (timeLimit > 1) {
-                    // mCol.setTimeLimit((timeLimit - 1) * 60);
-                    // mToggleLimitToggle.setChecked(true);
-                    // mToggleLimitToggle.setText(String.valueOf(timeLimit - 1));
-                    // } else if (timeLimit == 1) {
-                    // mCol.setTimeLimit(0);
-                    // mToggleLimitToggle.setChecked(false);
-                    // }
-                    // return;
-                    // case R.id.studyoptions_limittoggle:
-                    // timeLimit = (mCol.getTimeLimit() / 60);
-                    // if (timeLimit > 0) {
-                    // mToggleLimitToggle.setChecked(false);
-                    // mCol.setTimeLimit(0);
-                    // } else {
-                    // mToggleLimitToggle.setChecked(true);
-                    // mToggleLimitToggle.setText("1");
-                    // mCol.setTimeLimit(60);
-                    // }
-                    // return;
-                case R.id.studyoptions_congrats_undo:
-                    if (AnkiDroidApp.colIsOpen()) {
-                        col.undo();
-                        resetAndUpdateValuesFromDeck();
-                        finishCongrats();
-                    }
-                    return;
-                case R.id.studyoptions_congrats_unbury:
-                    col.getSched().unburyCards();
-                    resetAndUpdateValuesFromDeck();
-                    finishCongrats();
-                    return;
-                case R.id.studyoptions_congrats_open_other_deck:
-                    closeStudyOptions();
-                    return;
-                case R.id.studyoptions_congrats_customstudy:
-                    showDialog(DIALOG_CUSTOM_STUDY);
-                    return;
-                case R.id.studyoptions_card_browser:
-                    openCardBrowser();
-                    return;
-                case R.id.studyoptions_statistics:
-                    showDialog(DIALOG_STATISTIC_TYPE);
-                    return;
                 case R.id.studyoptions_options_cram:
                     openCramDeckOptions();
                     return;
@@ -278,15 +210,14 @@ public class StudyOptionsFragment extends Fragment {
                     return;
                 case R.id.studyoptions_rebuild_cram:
                     rebuildCramDeck();
+                    showCongratsIfNeeded();
                     return;
                 case R.id.studyoptions_empty_cram:
                     mProgressDialog = StyledProgressDialog.show(getActivity(), "",
                             getResources().getString(R.string.empty_cram_deck), true);
                     DeckTask.launchDeckTask(DeckTask.TASK_TYPE_EMPTY_CRAM, mUpdateValuesFromDeckListener,
                             new DeckTask.TaskData(col, col.getDecks().selected(), mFragmented));
-                    return;
-                case R.id.studyoptions_add:
-                    addNote();
+                    showCongratsIfNeeded();
                     return;
                 default:
                     return;
@@ -316,13 +247,12 @@ public class StudyOptionsFragment extends Fragment {
     }
 
 
-    public static StudyOptionsFragment newInstance(long deckId, boolean onlyFnsMsg, Bundle cramInitialConfig) {
+    public static StudyOptionsFragment newInstance(long deckId, Bundle cramInitialConfig) {
         StudyOptionsFragment f = new StudyOptionsFragment();
 
         // Supply index input as an argument.
         Bundle args = new Bundle();
         args.putLong("deckId", deckId);
-        args.putBoolean("onlyFnsMsg", onlyFnsMsg);
         args.putBundle("cramInitialConfig", cramInitialConfig);
         f.setArguments(args);
 
@@ -342,21 +272,11 @@ public class StudyOptionsFragment extends Fragment {
             return null;
         }
 
-        // ScrollView scroller = new ScrollView(getActivity());
-        // TextView text = new TextView(getActivity());
-        // int padding = (int)TypedValue.applyDimension(
-        // TypedValue.COMPLEX_UNIT_DIP,
-        // 4, getActivity().getResources().getDisplayMetrics());
-        // text.setPadding(padding, padding, padding, padding);
-        // scroller.addView();
-        mSelectedTags = new HashSet<String>();
         return createView(inflater, savedInstanceState);
     }
 
 
     protected View createView(LayoutInflater inflater, Bundle savedInstanceState) {
-        super.onCreate(savedInstanceState);
-
         Log.i(AnkiDroidApp.TAG, "StudyOptions - createView()");
 
         restorePreferences();
@@ -367,11 +287,6 @@ public class StudyOptionsFragment extends Fragment {
             reloadCollection();
             return null;
         }
-
-        // Intent intent = getActivity().getIntent();
-        // if (intent != null && intent.hasExtra(DeckPicker.EXTRA_DECK_ID)) {
-        // mCol.getDecks().select(intent.getLongExtra(DeckPicker.EXTRA_DECK_ID, 1));
-        // }
 
         initAllContentViews(inflater);
 
@@ -384,9 +299,8 @@ public class StudyOptionsFragment extends Fragment {
             };
         }
 
-        if (getArguments().getBoolean("onlyFnsMsg")) {
+        if (noDeckCounts()) {
             prepareCongratsView();
-            return mCongratsView;
         } else {
             // clear undo if new deck is opened (do not clear if only congrats msg is shown)
             AnkiDroidApp.getCol().clearUndo();
@@ -397,8 +311,19 @@ public class StudyOptionsFragment extends Fragment {
         resetAndUpdateValuesFromDeck();
 
         setHasOptionsMenu(true);
+        
+        // Show the congratulations message if there are no cards scheduled
+        showCongratsIfNeeded();
 
         return mStudyOptionsView;
+    }
+    
+    private void showCongratsIfNeeded() {
+        if (noDeckCounts()) {
+            prepareCongratsView();
+        } else {
+            finishCongrats();
+        }
     }
 
 
@@ -423,9 +348,6 @@ public class StudyOptionsFragment extends Fragment {
         super.onConfigurationChanged(newConfig);
         mDontSaveOnStop = false;
         // initAllContentViews();
-        if (mCurrentContentView == CONTENT_CONGRATS) {
-            setFragmentContentView(mCongratsView);
-        }
         mTextDeckName.setText(title);
         mTextDeckName.setVisibility(View.VISIBLE);
         mTextDeckDescription.setText(desc);
@@ -470,6 +392,8 @@ public class StudyOptionsFragment extends Fragment {
         if (AnkiDroidApp.colIsOpen()) {
             if (Utils.now() > AnkiDroidApp.getCol().getSched().getDayCutoff()) {
                 updateValuesFromDeck(true);
+            } else {
+                updateValuesFromDeck();
             }
         }
         showOrHideUnburyButton();
@@ -477,17 +401,31 @@ public class StudyOptionsFragment extends Fragment {
 
 
     private void closeStudyOptions() {
-        getActivity();
         closeStudyOptions(Activity.RESULT_OK);
     }
 
 
     private void closeStudyOptions(int result) {
-        // mCompat.invalidateOptionsMenu(this);
-        if (!mFragmented) {
-            getActivity().setResult(result);
-            getActivity().finish();
-            ActivityTransitionAnimation.slide(getActivity(), ActivityTransitionAnimation.RIGHT);
+        Activity a = getActivity();
+        if (!mFragmented && a != null) {
+            a.setResult(result);
+            a.finish();
+            ActivityTransitionAnimation.slide(a, ActivityTransitionAnimation.RIGHT);
+        } else if (a == null) {
+            // getActivity() can return null if reference to fragment lingers after parent activity has been closed,
+            // which is particularly relevant when using AsyncTasks.
+            Log.e(AnkiDroidApp.TAG, "closeStudyOptions() failed due to getActivity() returning null");
+        }
+    }
+
+    private void reloadStudyOptions() {
+        Activity a = getActivity();
+        if (a != null) {
+            ((OnStudyOptionsReloadListener) a).loadStudyOptionsFragment();
+        } else {
+            // getActivity() can return null if reference to fragment lingers after parent activity has been closed,
+            // which is particularly relevant when using AsyncTasks.
+            Log.e(AnkiDroidApp.TAG, "reloadStudyOptions() failed due to getActivity() returning null");
         }
     }
 
@@ -529,8 +467,8 @@ public class StudyOptionsFragment extends Fragment {
                 }
                 if (!AnkiDroidApp.colIsOpen()) {
                     closeStudyOptions();
-                } else if (!mFragmented) {
-                    ((StudyOptionsActivity) getActivity()).loadContent(false);
+                } else {
+                    reloadStudyOptions();
                 }
             }
 
@@ -550,6 +488,13 @@ public class StudyOptionsFragment extends Fragment {
             @Override
             public void onProgressUpdate(DeckTask.TaskData... values) {
             }
+
+
+            @Override
+            public void onCancelled() {
+                // TODO Auto-generated method stub
+                
+            }
         }, new DeckTask.TaskData(AnkiDroidApp.getCurrentAnkiDroidDirectory() + AnkiDroidApp.COLLECTION_PATH));
     }
 
@@ -568,19 +513,16 @@ public class StudyOptionsFragment extends Fragment {
     private void initAllContentViews(LayoutInflater inflater) {
         mStudyOptionsView = inflater.inflate(R.layout.studyoptions_fragment, null);
         Themes.setContentStyle(mStudyOptionsView, Themes.CALLER_STUDYOPTIONS);
+        mDeckInfoLayout = mStudyOptionsView.findViewById(R.id.studyoptions_deckinformation);
         mTextDeckName = (TextView) mStudyOptionsView.findViewById(R.id.studyoptions_deck_name);
         mTextDeckDescription = (TextView) mStudyOptionsView.findViewById(R.id.studyoptions_deck_description);
         mButtonStart = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_start);
         mButtonCustomStudy = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_custom);
         mDeckOptions = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_options);
         mCramOptions = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_options_cram);
-        // mButtonUp = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_limitup);
-        // mButtonDown = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_limitdown);
-        // mToggleLimitToggle = (ToggleButton) mStudyOptionsView.findViewById(R.id.studyoptions_limittoggle);
-
-        // mToggleNight = (ToggleButton) mStudyOptionsView
-        // .findViewById(R.id.studyoptions_night);
-        // mToggle.setChecked(mInvertedColors);
+        mCongratsLayout = mStudyOptionsView.findViewById(R.id.studyoptions_congrats_layout);
+        mTextCongratsMessage = (TextView) mStudyOptionsView.findViewById(R.id.studyoptions_congrats_message);
+        
 
         if (AnkiDroidApp.colIsOpen()
                 && AnkiDroidApp.getCol().getDecks().isDyn(AnkiDroidApp.getCol().getDecks().selected())) {
@@ -597,27 +539,6 @@ public class StudyOptionsFragment extends Fragment {
         mButtonUnbury = (Button) mStudyOptionsView.findViewById(R.id.studyoptions_unbury);
         mButtonUnbury.setOnClickListener(mButtonClickListener);
         showOrHideUnburyButton();
-
-        if (!mFragmented) {
-            // Standard non-fragmented view for non-tablets, using standard layout file (in ./res/layout/)
-            mAddNote = (ImageButton) mStudyOptionsView.findViewById(R.id.studyoptions_add);
-            if (AnkiDroidApp.colIsOpen()) {
-                Collection col = AnkiDroidApp.getCol();
-                if (col.getDecks().isDyn(col.getDecks().selected())) {
-                    mAddNote.setEnabled(false);
-                }
-            }
-            mCardBrowser = (ImageButton) mStudyOptionsView.findViewById(R.id.studyoptions_card_browser);
-            mStatisticsButton = (ImageButton) mStudyOptionsView.findViewById(R.id.studyoptions_statistics);
-            mAddNote.setOnClickListener(mButtonClickListener);
-            mCardBrowser.setOnClickListener(mButtonClickListener);
-            mStatisticsButton.setOnClickListener(mButtonClickListener);
-        } else {
-            // Fragmented view for 10" tablets, which is different from smaller devices due to larger layout file (in
-            // ./res/layout-xlarge/)
-            // This tablet view shows the study options fragment simultaneously with the deck picker, and has different
-            // buttons from standard
-        }
 
         // Code common to both fragmented and non-fragmented view
         mTextTodayNew = (TextView) mStudyOptionsView.findViewById(R.id.studyoptions_new);
@@ -641,8 +562,6 @@ public class StudyOptionsFragment extends Fragment {
         // mToggleCram.setOnClickListener(mButtonClickListener);
         // mToggleNight.setOnClickListener(mButtonClickListener);
 
-        // The view that shows the congratulations view.
-        mCongratsView = inflater.inflate(R.layout.studyoptions_congrats, null);
 
         // The view that shows the learn more options
         mCustomStudyDetailsView = inflater.inflate(R.layout.styled_custom_study_details_dialog, null);
@@ -655,23 +574,6 @@ public class StudyOptionsFragment extends Fragment {
          * need a new, different dialog, that allows to select a list of tags:
          */
 
-        Themes.setWallpaper(mCongratsView);
-
-        mTextCongratsMessage = (TextView) mCongratsView.findViewById(R.id.studyoptions_congrats_message);
-        Themes.setTextViewStyle(mTextCongratsMessage);
-
-        mButtonCongratsUndo = (Button) mCongratsView.findViewById(R.id.studyoptions_congrats_undo);
-        mButtonCongratsUnbury = (Button) mCongratsView.findViewById(R.id.studyoptions_congrats_unbury);
-        mButtonCongratsCustomStudy = (Button) mCongratsView.findViewById(R.id.studyoptions_congrats_customstudy);
-        mButtonCongratsOpenOtherDeck = (Button) mCongratsView.findViewById(R.id.studyoptions_congrats_open_other_deck);
-        if (mFragmented) {
-            mButtonCongratsOpenOtherDeck.setVisibility(View.GONE);
-        }
-
-        mButtonCongratsUndo.setOnClickListener(mButtonClickListener);
-        mButtonCongratsUnbury.setOnClickListener(mButtonClickListener);
-        mButtonCongratsCustomStudy.setOnClickListener(mButtonClickListener);
-        mButtonCongratsOpenOtherDeck.setOnClickListener(mButtonClickListener);
     }
 
 
@@ -682,7 +584,90 @@ public class StudyOptionsFragment extends Fragment {
         onPrepareDialog(id, mDialogs.get(id));
         mDialogs.get(id).show();
     }
+    
+    private boolean noDeckCounts() {
+        // Check if there are any reviews due in current deck
+        DeckTask.waitToFinish();
+        int[] counts = AnkiDroidApp.getCol().getSched().counts();
+        if (counts[0]+counts[1]+counts[2]==0) {
+            return true;
+        } else {
+            return false;
+        }
+        
+    }
 
+    private DialogFragment showDialogFragment(int id) {
+
+        DialogFragment dialogFragment = null;
+        String tag = null;
+        switch(id) {
+            case DIALOG_CUSTOM_STUDY_TAGS:
+                /*
+                 * This handles the case where we want to create a Custom Study Deck using tags. This dialog needs to be
+                 * different from the normal Custom Study dialogs, because more information is required: --List of Tags
+                 * to select. --Which cards to select --(New cards, Due cards, or all cards, as in the desktop version)
+                 */
+                if (!AnkiDroidApp.colIsOpen()) {
+                    // TODO how should this error be handled?
+                }
+                allTags = AnkiDroidApp.getCol().getTags().all().toArray(new String[0]);
+
+                TagsDialog dialog = com.ichi2.anki.dialogs.TagsDialog.newInstance(
+                    TagsDialog.TYPE_CUSTOM_STUDY_TAGS, new ArrayList<String>(), 
+                    new ArrayList<String>(AnkiDroidApp.getCol().getTags().all()));
+
+                dialog.setTagsDialogListener(new TagsDialogListener() {
+                    @Override
+                    public void onPositive(List<String> selectedTags, int option) {
+                        /*
+                         * Here's the method that gathers the final selection of tags, type of cards and generates the search
+                         * screen for the custom study deck.
+                         */
+                        mCustomStudyEditText.setText("");
+                        String tags = selectedTags.toString();
+                        mCustomStudyEditText.setHint(getResources().getString(R.string.card_browser_tags_shown,
+                                tags.substring(1, tags.length() - 1)));
+                        StringBuilder sb = new StringBuilder();
+                        switch (option) {
+                            case 1:
+                                sb.append("is:new ");
+                                break;
+                            case 2:
+                                sb.append("is:due ");
+                                break;
+                            default:
+                                // Logging here might be appropriate : )
+                                break;
+                        }
+                        int i = 0;
+                        for (String tag : selectedTags) {
+                            if (i != 0) {
+                                sb.append("or ");
+                            } else {
+                                sb.append("("); // Only if we really have selected tags
+                            }
+                            sb.append("tag:").append(tag).append(" ");
+                            i++;
+                        }
+                        if (i > 0) {
+                            sb.append(")"); // Only if we added anything to the tag list
+                        }
+                        mSearchTerms = sb.toString();
+                        createFilteredDeck(new JSONArray(), new Object[] { mSearchTerms, Consts.DYN_MAX_SIZE,
+                                Consts.DYN_RANDOM }, false);
+                    }
+                });
+                
+                dialogFragment = dialog;
+                break;
+            default:
+                break;
+        }
+        
+        dialogFragment.show(getFragmentManager(), tag);
+        return dialogFragment;
+    }
 
     private void onPrepareDialog(int id, StyledDialog styledDialog) {
         Resources res = getResources();
@@ -892,7 +877,7 @@ public class StudyOptionsFragment extends Fragment {
                                      * number, it is necessary to collect a list of tags. This case handles the creation
                                      * of that Dialog.
                                      */
-                                    showDialog(DIALOG_CUSTOM_STUDY_TAGS);
+                                    showDialogFragment(DIALOG_CUSTOM_STUDY_TAGS);
                                     return;
                                 }
                                 showDialog(DIALOG_CUSTOM_STUDY_DETAILS);
@@ -902,123 +887,6 @@ public class StudyOptionsFragment extends Fragment {
                 dialog = builder1.create();
                 break;
 
-            case DIALOG_CUSTOM_STUDY_TAGS:
-                /*
-                 * This handles the case where we want to create a Custom Study Deck using tags. This dialog needs to be
-                 * different from the normal Custom Study dialogs, because more information is required: --List of Tags
-                 * to select. --Which cards to select --(New cards, Due cards, or all cards, as in the desktop version)
-                 */
-                if (!AnkiDroidApp.colIsOpen()) {
-                    // TODO how should this error be handled?
-                }
-
-                Context context = getActivity().getBaseContext();
-                /*
-                 * The following RadioButtons and RadioGroup are to select the category of cards to select for the
-                 * Custom Study Deck (New, Due or All cards).
-                 */
-                RadioGroup rg = formatRGCardType(context, res);
-                mSelectWhichCards = rg;
-
-                builder1.setView(rg, false, true);
-
-                // Here we add the list of tags for the whole collection.
-                Collection col;
-                col = AnkiDroidApp.getCol();
-                List<String> tags_list = col.getTags().all();
-                Collections.sort(tags_list, new Comparator<String>() {
-                    @Override
-                    public int compare(String lhs, String rhs) {
-                        return lhs.compareToIgnoreCase(rhs);
-                    }
-                });
-                allTags = tags_list.toArray(new String[tags_list.size()]);
-                builder1.setTitle(R.string.studyoptions_limit_select_tags);
-                builder1.setMultiChoiceItems(allTags, new boolean[allTags.length],
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                String tag = allTags[which];
-                                if (mSelectedTags.contains(tag)) {
-                                    Log.i(AnkiDroidApp.TAG, "unchecked tag: " + tag);
-                                    mSelectedTags.remove(tag);
-                                } else {
-                                    Log.i(AnkiDroidApp.TAG, "checked tag: " + tag);
-                                    mSelectedTags.add(tag);
-                                }
-                            }
-                        }, new CompoundButton.OnCheckedChangeListener() {
-                            @Override
-                            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                                mTagsDialog.setItemListChecked(isChecked);
-                                mSelectedTags = new HashSet<String>(mTagsDialog.getCheckedItems());
-                            }
-                        });
-
-                /*
-                 * Here's the method that gathers the final selection of tags, type of cards and generates the search
-                 * screen for the custom study deck.
-                 */
-                builder1.setPositiveButton(res.getString(R.string.select), new OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mCustomStudyEditText.setText("");
-                        String tags = mSelectedTags.toString();
-                        mCustomStudyEditText.setHint(getResources().getString(R.string.card_browser_tags_shown,
-                                tags.substring(1, tags.length() - 1)));
-                        StringBuilder sb = new StringBuilder();
-                        switch (mSelectedOption) {
-                            case 1:
-                                sb.append("is:new ");
-                                break;
-                            case 2:
-                                sb.append("is:due ");
-                                break;
-                            default:
-                                // Logging here might be appropriate : )
-                                break;
-                        }
-                        int i = 0;
-                        for (String tag : mSelectedTags) {
-                            if (i != 0) {
-                                sb.append("or ");
-                            } else {
-                                sb.append("("); // Only if we really have selected tags
-                            }
-                            sb.append("tag:").append(tag).append(" ");
-                            i++;
-                        }
-                        if (i > 0) {
-                            sb.append(")"); // Only if we added anything to the tag list
-                        }
-                        mSearchTerms = sb.toString();
-                        createFilteredDeck(new JSONArray(), new Object[] { mSearchTerms, Consts.DYN_MAX_SIZE,
-                                Consts.DYN_RANDOM }, false);
-                    }
-                });
-                builder1.setNegativeButton(res.getString(R.string.dialog_cancel), new OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mTagsDialog.setItemListChecked(false);
-                        mSelectedTags.clear();
-                    }
-                });
-                builder1.setOnCancelListener(new OnCancelListener() {
-
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        mTagsDialog.setItemListChecked(false);
-                        mSelectedTags.clear();
-                    }
-                });
-                builder1.setShowFilterTags(true);
-
-                mTagsDialog = builder1.create();
-                dialog = mTagsDialog;
-                // without this the dialog goes up the screen in a way that the user isn't able to see the full item
-                // list.
-                mTagsDialog.getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_ADJUST_RESIZE);
-                break;
             case DIALOG_CUSTOM_STUDY_DETAILS:
                 /*
                  * This is the normal case for creating a custom study deck, where the dialog requires only a numeric
@@ -1039,49 +907,6 @@ public class StudyOptionsFragment extends Fragment {
         dialog.setOwnerActivity(getActivity());
         return dialog;
     }
-
-
-    /**
-     * formatRGCardType Returns: RadioGroup - A radio group that contains the options of All Cards, New, and Due cards,
-     * for the selection of cards when creating a CUSTOM_STUDY_DECKS based on TAGS. Takes: context, and resources of the
-     * App. This method just creates the RadioGroup required for the dialog to select tags for a new custom study deck.
-     */
-    private RadioGroup formatRGCardType(Context context, Resources res) {
-        RadioGroup rg = new RadioGroup(context);
-        final RadioButton[] radioButtonCards = new RadioButton[3];
-        rg.setOrientation(RadioGroup.HORIZONTAL);
-        RadioGroup.LayoutParams lp = new RadioGroup.LayoutParams(0, LayoutParams.MATCH_PARENT, 1);
-        int height = context.getResources().getDrawable(R.drawable.white_btn_radio).getIntrinsicHeight();
-
-        // This array contains "All Cards", "New", and "Due", in that order.
-        String[] text = res.getStringArray(R.array.cards_for_tag_filtered_deck_labels);
-        for (int i = 0; i < radioButtonCards.length; i++) {
-            radioButtonCards[i] = new RadioButton(context);
-            radioButtonCards[i].setClickable(true);
-            radioButtonCards[i].setText(text[i]);
-            radioButtonCards[i].setHeight(height * 2);
-            radioButtonCards[i].setSingleLine();
-            radioButtonCards[i].setGravity(Gravity.CENTER_VERTICAL);
-            rg.addView(radioButtonCards[i], lp);
-        }
-        radioButtonCards[0].setChecked(true);
-
-        rg.setOnCheckedChangeListener(new OnCheckedChangeListener() {
-            @Override
-            public void onCheckedChanged(RadioGroup arg0, int arg1) {
-                int checked = arg0.getCheckedRadioButtonId();
-                for (int i = 0; i < 3; i++) {
-                    if (arg0.getChildAt(i).getId() == checked) {
-                        mSelectedOption = i;
-                        break;
-                    }
-                }
-            }
-        });
-        rg.setLayoutParams(new LinearLayout.LayoutParams(LayoutParams.FILL_PARENT, height));
-        return rg;
-    }
-
 
     private void createFilteredDeck(JSONArray delays, Object[] terms, Boolean resched) {
         JSONObject dyn;
@@ -1124,16 +949,6 @@ public class StudyOptionsFragment extends Fragment {
                 ar.getJSONArray(0).put(2, terms[2]);
                 dyn.put("resched", resched);
 
-                if (mFragmented) {
-                    Bundle config = new Bundle();
-                    config.putString("searchSuffix", "'deck:" + dyn.getString("name") + "'");
-                    initAllContentViews(getLayoutInflater(config));
-                    finishCongrats();
-                } else {
-                    // Load a new fragment with the filtered deck view. The config passed is null, so it uses the
-                    // current deck. The deck we just created is internally set as the current deck.
-                    ((StudyOptionsActivity) getActivity()).loadContent(false, null);
-                }
 
                 // Initial rebuild
                 mProgressDialog = StyledProgressDialog.show(getActivity(), "",
@@ -1172,6 +987,13 @@ public class StudyOptionsFragment extends Fragment {
         }
         JSONObject deck = AnkiDroidApp.getCol().getDecks().current();
         try {
+            // Workaround for issue 2166; probably there's a cleaner solution
+            if (mTextDeckName == null) {
+                initAllContentViews(getActivity().getLayoutInflater());
+                resetAndUpdateValuesFromDeck();
+                return;
+            }
+
             fullName = deck.getString("name");
             String[] name = fullName.split("::");
             StringBuilder nameBuilder = new StringBuilder();
@@ -1275,61 +1097,21 @@ public class StudyOptionsFragment extends Fragment {
     }
 
 
-    public boolean congratsShowing() {
-        if (mCurrentContentView == CONTENT_CONGRATS) {
-            updateValuesFromDeck();
-            return true;
-        } else {
-            return false;
-        }
-    }
-
-
     public void finishCongrats() {
         mCurrentContentView = CONTENT_STUDY_OPTIONS;
-        mStudyOptionsView.setVisibility(View.INVISIBLE);
-        mCongratsView.setVisibility(View.INVISIBLE);
-        mCongratsView.setAnimation(ViewAnimation.fade(ViewAnimation.FADE_OUT, 500, 0));
-        setFragmentContentView(mStudyOptionsView);
-        mStudyOptionsView.setVisibility(View.VISIBLE);
-        mStudyOptionsView.setAnimation(ViewAnimation.fade(ViewAnimation.FADE_IN, 500, 0));
-        mCongratsView.setVisibility(View.VISIBLE);
+        mDeckInfoLayout.setVisibility(View.VISIBLE);
+        mCongratsLayout.setVisibility(View.GONE);
+        mButtonStart.setVisibility(View.VISIBLE);
     }
 
 
     private void prepareCongratsView() {
         mCurrentContentView = CONTENT_CONGRATS;
-        if (!AnkiDroidApp.colIsOpen() || !AnkiDroidApp.getCol().undoAvailable()) {
-            mButtonCongratsUndo.setEnabled(false);
-            mButtonCongratsUndo.setVisibility(View.GONE);
-        } else {
-            Resources res = AnkiDroidApp.getAppResources();
-            mButtonCongratsUndo.setText(res.getString(R.string.studyoptions_congrats_undo, AnkiDroidApp.getCol()
-                    .undoName(res)));
-        }
-        if (AnkiDroidApp.colIsOpen() && !AnkiDroidApp.getCol().getSched().haveBuried()) {
-            mButtonCongratsUnbury.setVisibility(View.GONE);
-        }
+        mDeckInfoLayout.setVisibility(View.GONE);
+        mCongratsLayout.setVisibility(View.VISIBLE);
         mTextCongratsMessage.setText(AnkiDroidApp.getCol().getSched().finishedMsg(getActivity()));
-        // Filtered decks must not have a custom study button
-        try {
-            if (AnkiDroidApp.getCol().getDecks().current().getInt("dyn") == 1) {
-                mButtonCongratsCustomStudy.setEnabled(false);
-                mButtonCongratsCustomStudy.setVisibility(View.GONE);
-            }
-        } catch (JSONException e) {
-            throw new RuntimeException();
-        }
+        mButtonStart.setVisibility(View.GONE);
     }
-
-
-    private void openCardBrowser() {
-        mDontSaveOnStop = true;
-        Intent cardBrowser = new Intent(getActivity(), CardBrowser.class);
-        startActivityForResult(cardBrowser, BROWSE_CARDS);
-        animateLeft();
-    }
-
 
     @Override
     public void onCreateOptionsMenu(Menu menu, MenuInflater inflater) {
@@ -1340,6 +1122,14 @@ public class StudyOptionsFragment extends Fragment {
         } else {
             menu.findItem(R.id.action_night_mode).setIcon(R.drawable.ic_menu_night);
         }
+        
+        if (!AnkiDroidApp.colIsOpen() || !AnkiDroidApp.getCol().undoAvailable()) {
+            menu.findItem(R.id.action_undo).setVisible(false);
+        } else {
+            menu.findItem(R.id.action_undo).setVisible(true);
+            Resources res = AnkiDroidApp.getAppResources();
+            menu.findItem(R.id.action_undo).setTitle(res.getString(R.string.studyoptions_congrats_undo, AnkiDroidApp.getCol().undoName(res)));
+        }
         super.onCreateOptionsMenu(menu, inflater);
     }
 
@@ -1347,7 +1137,14 @@ public class StudyOptionsFragment extends Fragment {
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
         switch (item.getItemId()) {
-
+            case R.id.action_undo:
+                if (AnkiDroidApp.colIsOpen()) {
+                    AnkiDroidApp.getCol().undo();
+                    resetAndUpdateValuesFromDeck();
+                    finishCongrats();
+                    getActivity().supportInvalidateOptionsMenu();
+                }
+                return true;
             case R.id.action_night_mode:
                 SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getActivity());
                 if (preferences.getBoolean("invertedColors", false)) {
@@ -1358,6 +1155,9 @@ public class StudyOptionsFragment extends Fragment {
                     item.setIcon(R.drawable.ic_menu_night_checked);
                 }
                 return true;
+                
+            case R.id.action_add_note_from_study_options:
+                addNote();
 
             default:
                 return super.onOptionsItemSelected(item);
@@ -1370,7 +1170,7 @@ public class StudyOptionsFragment extends Fragment {
     public void onActivityResult(int requestCode, int resultCode, Intent intent) {
         super.onActivityResult(requestCode, resultCode, intent);
         Log.i(AnkiDroidApp.TAG, "StudyOptionsFragment: onActivityResult");
-
+        getActivity().supportInvalidateOptionsMenu();
         if (resultCode == DeckPicker.RESULT_DB_ERROR) {
             closeStudyOptions(DeckPicker.RESULT_DB_ERROR);
         }
@@ -1402,8 +1202,11 @@ public class StudyOptionsFragment extends Fragment {
                     }
                     rebuildCramDeck();
                 } else {
+                    DeckTask.waitToFinish();
                     resetAndUpdateValuesFromDeck();
                 }
+                // Show the congratulations message if there are no cards scheduled
+                showCongratsIfNeeded();
             } else if (requestCode == ADD_NOTE && resultCode != Activity.RESULT_CANCELED) {
                 resetAndUpdateValuesFromDeck();
             } else if (requestCode == REQUEST_REVIEW) {
@@ -1418,7 +1221,6 @@ public class StudyOptionsFragment extends Fragment {
                         break;
                     case Reviewer.RESULT_NO_MORE_CARDS:
                         prepareCongratsView();
-                        setFragmentContentView(mCongratsView);
                         break;
                 }
                 mDontSaveOnStop = false;
@@ -1433,6 +1235,17 @@ public class StudyOptionsFragment extends Fragment {
             }
         }
     }
+    
+    private void dismissProgressDialog() {
+        // for rebuilding cram decks
+        if (mProgressDialog != null && mProgressDialog.isShowing()) {
+            try {
+                mProgressDialog.dismiss();
+            } catch (Exception e) {
+                Log.e(AnkiDroidApp.TAG, "onPostExecute - Dialog dismiss Exception = " + e.getMessage());
+            }
+        }        
+    }
 
 
     public SharedPreferences restorePreferences() {
@@ -1445,7 +1258,8 @@ public class StudyOptionsFragment extends Fragment {
     DeckTask.TaskListener mRebuildCustomStudyListener = new DeckTask.TaskListener() {
         @Override
         public void onPostExecute(TaskData result) {
-            resetAndUpdateValuesFromDeck();
+            dismissProgressDialog();
+            reloadStudyOptions();
         }
 
 
@@ -1456,6 +1270,13 @@ public class StudyOptionsFragment extends Fragment {
 
         @Override
         public void onProgressUpdate(TaskData... values) {
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
         }
     };
 
@@ -1548,13 +1369,7 @@ public class StudyOptionsFragment extends Fragment {
             }
 
             // for rebuilding cram decks
-            if (mProgressDialog != null && mProgressDialog.isShowing()) {
-                try {
-                    mProgressDialog.dismiss();
-                } catch (Exception e) {
-                    Log.e(AnkiDroidApp.TAG, "onPostExecute - Dialog dismiss Exception = " + e.getMessage());
-                }
-            }
+            dismissProgressDialog();
         }
 
 
@@ -1566,19 +1381,21 @@ public class StudyOptionsFragment extends Fragment {
         @Override
         public void onProgressUpdate(DeckTask.TaskData... values) {
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
+        }
     };
 
     DeckTask.TaskListener mLoadStatisticsHandler = new DeckTask.TaskListener() {
 
         @Override
         public void onPostExecute(DeckTask.TaskData result) {
-            if (mProgressDialog.isShowing()) {
-                try {
-                    mProgressDialog.dismiss();
-                } catch (Exception e) {
-                    Log.e(AnkiDroidApp.TAG, "onPostExecute - Dialog dismiss Exception = " + e.getMessage());
-                }
-            }
+            dismissProgressDialog();
+            
             if (result.getBoolean()) {
                 // if (mStatisticType == Statistics.TYPE_DECK_SUMMARY) {
                 // Statistics.showDeckSummary(getActivity());
@@ -1604,6 +1421,13 @@ public class StudyOptionsFragment extends Fragment {
         public void onProgressUpdate(DeckTask.TaskData... values) {
         }
 
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
+        }
+
     };
 
     class MyGestureDetector extends SimpleOnGestureListener {
@@ -1615,15 +1439,7 @@ public class StudyOptionsFragment extends Fragment {
                             && Math.abs(velocityX) > AnkiDroidApp.sSwipeThresholdVelocity
                             && Math.abs(e1.getY() - e2.getY()) < AnkiDroidApp.sSwipeMaxOffPath) {
                         // left
-                        if (mCongratsView != null && mCongratsView.getVisibility() == View.VISIBLE) {
-                            if (AnkiDroidApp.colIsOpen()) {
-                                AnkiDroidApp.getCol().undo();
-                                resetAndUpdateValuesFromDeck();
-                                finishCongrats();
-                            }
-                        } else {
-                            openReviewer();
-                        }
+                        openReviewer();
                     } else if (e2.getX() - e1.getX() > AnkiDroidApp.sSwipeMinDistance
                             && Math.abs(velocityX) > AnkiDroidApp.sSwipeThresholdVelocity
                             && Math.abs(e1.getY() - e2.getY()) < AnkiDroidApp.sSwipeMaxOffPath) {

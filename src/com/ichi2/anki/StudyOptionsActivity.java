@@ -23,12 +23,14 @@ import android.content.DialogInterface.OnCancelListener;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.os.Bundle;
-import android.support.v7.app.ActionBarActivity;
+import android.support.v4.widget.DrawerLayout;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.Menu;
 import android.view.MenuItem;
 import android.view.MotionEvent;
 import android.widget.EditText;
+import android.widget.ListView;
 
 import com.ichi2.anim.ActivityTransitionAnimation;
 import com.ichi2.anki.receiver.SdCardReceiver;
@@ -36,7 +38,7 @@ import com.ichi2.themes.StyledOpenCollectionDialog;
 import com.ichi2.themes.Themes;
 import com.ichi2.widget.WidgetStatus;
 
-public class StudyOptionsActivity extends ActionBarActivity {
+public class StudyOptionsActivity extends NavigationDrawerActivity implements StudyOptionsFragment.OnStudyOptionsReloadListener {
 
     private StudyOptionsFragment mCurrentFragment;
 
@@ -53,36 +55,61 @@ public class StudyOptionsActivity extends ActionBarActivity {
         // to android.R.id.content when an action bar is used in Android 2.1 (and potentially
         // higher) with the appcompat package.
         setContentView(R.layout.studyoptions);
+        // create inherited navigation drawer layout here so that it can be used by parent class
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.studyoptions_drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.studyoptions_left_drawer);
+        initNavigationDrawer();
         if (savedInstanceState == null) {
-            loadContent(getIntent().getBooleanExtra("onlyFnsMsg", false));
+            loadStudyOptionsFragment();
         }
         registerExternalStorageListener();
     }
 
+    @Override
+    public boolean onPrepareOptionsMenu(Menu menu){
+        // Make the add button visible when not fragmented layout
+        MenuItem addFromStudyOptions = menu.findItem(R.id.action_add_note_from_study_options);
+        if (addFromStudyOptions != null) {
+            addFromStudyOptions.setVisible(true);
+        }
+        return true;
+    }
 
-    public void loadContent(boolean onlyFnsMsg) {
-        loadContent(onlyFnsMsg, null);
+    public void loadStudyOptionsFragment() {
+        loadStudyOptionsFragment(0, null);
     }
 
 
-    public void loadContent(boolean onlyFnsMsg, Bundle cramConfig) {
-        mCurrentFragment = StudyOptionsFragment.newInstance(0, false, null);
+    public void loadStudyOptionsFragment(long deckId, Bundle cramConfig) {
+        mCurrentFragment = StudyOptionsFragment.newInstance(deckId, null);
         Bundle args = getIntent().getExtras();
-        if (onlyFnsMsg) {
-            args.putBoolean("onlyFnsMsg", onlyFnsMsg);
-        }
+
         if (cramConfig != null) {
             args.putBundle("cramInitialConfig", cramConfig);
         }
         mCurrentFragment.setArguments(args);
-        getSupportFragmentManager().beginTransaction().add(R.id.studyoptions_frame, mCurrentFragment).commit();
+        getSupportFragmentManager().beginTransaction().replace(R.id.studyoptions_frame, mCurrentFragment).commit();
     }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        for (int i=0; i< mDrawerList.getCount(); i++) {
+            mDrawerList.setItemChecked(i, false);
+        }
+    }    
 
 
-    // TODO: onpause, onresume, onstop
+    // TODO: onpause, onstop
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        // The action bar home/up action should open or close the drawer.
+        // ActionBarDrawerToggle will take care of this.
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }
+        
         switch (item.getItemId()) {
 
             case android.R.id.home:
@@ -119,8 +146,7 @@ public class StudyOptionsActivity extends ActionBarActivity {
     private void closeStudyOptions(int result) {
         // mCompat.invalidateOptionsMenu(this);
         setResult(result);
-        finish();
-        ActivityTransitionAnimation.slide(this, ActivityTransitionAnimation.RIGHT);
+        finishWithAnimation(ActivityTransitionAnimation.RIGHT);
     }
 
 
@@ -128,10 +154,6 @@ public class StudyOptionsActivity extends ActionBarActivity {
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
             Log.i(AnkiDroidApp.TAG, "StudyOptions - onBackPressed()");
-            if (mCurrentFragment != null && mCurrentFragment.congratsShowing()) {
-                mCurrentFragment.finishCongrats();
-                return true;
-            }
             closeStudyOptions();
             return true;
         }

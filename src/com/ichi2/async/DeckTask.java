@@ -142,6 +142,9 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
 
         }
         // Start new task
+        /* Note: It seems that doing this can lead to replacing sLatestInstance with a new DeckTask after calling cancel()
+        but BEFORE actually finishing the task. This interferes with code checking for onCancelled(), which is very problematic */
+        // TODO: change to a cleaner way of doing this
         sLatestInstance = new DeckTask(type, listener, sLatestInstance);
         sLatestInstance.execute(params);
         return sLatestInstance;
@@ -164,9 +167,11 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
 
 
     public static void cancelTask() {
+        //cancel the current task
         try {
             if ((sLatestInstance != null) && (sLatestInstance.getStatus() != AsyncTask.Status.FINISHED)) {
                 sLatestInstance.cancel(true);
+                Log.i(AnkiDroidApp.TAG, "Cancelled task " + sLatestInstance.mType);
             }
         } catch (Exception e) {
             return;
@@ -175,13 +180,9 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
 
 
     public static void cancelTask(int taskType) {
-        try {
-            Boolean match = sLatestInstance.mType == taskType;
-            if ((sLatestInstance != null) && (sLatestInstance.getStatus() != AsyncTask.Status.FINISHED) && (match)) {
-                sLatestInstance.cancel(true);
-            }
-        } catch (Exception e) {
-            return;
+        // cancel the current task only if it's of type taskType
+        if (sLatestInstance.mType == taskType) {
+            cancelTask();
         }
     }
 
@@ -370,6 +371,10 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
         mPreviousTask = null;
     }
 
+    @Override
+    protected void onCancelled(){
+        mListener.onCancelled();
+    }
 
     private TaskData doInBackgroundAddNote(TaskData[] params) {
         Log.i(AnkiDroidApp.TAG, "doInBackgroundAddNote");
@@ -446,6 +451,7 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
         Card oldCard = params[0].getCard();
         int ease = params[0].getInt();
         Card newCard = null;
+        // TODO: proper leech handling
         int oldCardLeech = 0;
         // 0: normal; 1: leech; 2: leech & suspended
         try {
@@ -454,13 +460,6 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
             try {
                 if (oldCard != null) {
                     sched.answerCard(oldCard, ease);
-                    if (oldCard.note().hasTag("leech")) {
-                        if (oldCard.getQueue() < 0) {
-                            oldCardLeech = 2;
-                        } else {
-                            oldCardLeech = 1;
-                        }
-                    }
                 }
                 if (newCard == null) {
                     newCard = getCard(sched);
@@ -722,12 +721,13 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
         Collection col = (Collection) params[0].getObjArray()[0];
         HashMap<String, String> deckNames = (HashMap<String, String>) params[0].getObjArray()[1];
         String query = (String) params[0].getObjArray()[2];
-        String order = (String) params[0].getObjArray()[3];
-        TaskData result = new TaskData(col.findCardsForCardBrowser(query, order, deckNames));
-        if (isCancelled()) {
+        Boolean order = (Boolean) params[0].getObjArray()[3];
+        ArrayList<HashMap<String,String>> searchResult = col.findCardsForCardBrowser(query, order, deckNames);        
+        if (isCancelled() || CardBrowser.sSearchCancelled) {
+            Log.i(AnkiDroidApp.TAG, "doInBackgroundSearchCards was cancelled so return null");
             return null;
         } else {
-            publishProgress(result);
+            publishProgress(new TaskData(searchResult));
         }
         return new TaskData(col.cardCount(col.getDecks().allIds()));
     }
@@ -1037,7 +1037,7 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
                 jr.endObject();
                 jr.close();
             }
-            String mediaDir = col.getMedia().getDir();
+            String mediaDir = col.getMedia().dir();
             int total = nameToNum.size();
             int i = 0;
             for (Map.Entry<String, String> entry : nameToNum.entrySet()) {
@@ -1148,11 +1148,10 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
     private TaskData doInBackgroundRestoreDeck(TaskData... params) {
         Log.i(AnkiDroidApp.TAG, "doInBackgroundRestoreDeck");
         Object[] data = params[0].getObjArray();
-        Collection col = (Collection) data[0];
-        if (col != null) {
-            col.close(false);
-        }
-        return new TaskData(BackupManager.restoreBackup((String) data[1], (String) data[2]));
+        AnkiDroidApp.closeCollection(false);
+        int result = BackupManager.restoreBackup((String) data[1], (String) data[2]);
+        AnkiDroidApp.openCollection(AnkiDroidApp.getCollectionPath());
+        return new TaskData(result);
     }
 
 
@@ -1187,7 +1186,7 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
         Resources res = AnkiDroidApp.getInstance().getBaseContext().getResources();
         Collection col = params[0].getCollection();
         col.getDb().getDatabase().beginTransaction();
-        String title = res.getString(R.string.help_tutorial);
+        String title = res.getString(R.string.tutorial_deck_name);
         try {
             // get deck or create it
             long did = col.getDecks().id(title);
@@ -1389,6 +1388,11 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
          * The semantics of the update data depends on the task itself.
          */
         void onProgressUpdate(DeckTask task, TaskData... values);
+
+        /**
+         * Invoked when the background task is cancelled.
+         */        
+        void onCancelled();
 
     }
 
@@ -1781,6 +1785,18 @@ public class DeckTask extends BaseAsyncTask<DeckTask.TaskData, DeckTask.TaskData
 
         public void setIdList(List<Long> idList) {
             mIdList = idList;
+        }
+    }
+    
+    public static boolean taskIsCancelled(){
+        return sLatestInstance!=null && sLatestInstance.isCancelled();
+    }
+    
+    public static boolean taskIsCancelled(int taskType){
+        if (sLatestInstance != null && sLatestInstance.mType == taskType){
+            return taskIsCancelled();
+        } else {
+            return false;
         }
     }
 

@@ -35,6 +35,14 @@
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <resources>
+  <string-array name="navigation_titles">
+    <item>Desteler</item>
+    <item>Kart Tarayıcısı</item>
+    <item>İstatistikler</item>
+    <item>Ayarlar</item>
+    <item>Yardım</item>
+    <item>Geribildirim Gönder</item>
+  </string-array>
   <string-array name="newCardSchedulingLabels">
     <item>Gözden geçirme boyunca dağıt</item>
     <item>Gözden geçirmeden sonra</item>
@@ -53,7 +61,7 @@
     <item>100</item>
     <item>150</item>
     <item>200</item>
-    <item>Never notify</item>
+    <item>Hiçbir zaman bildirme</item>
   </string-array>
   <string-array name="cram_review_order_labels">
     <item>İlk önce en eski değiştirilmişler</item>
@@ -151,7 +159,7 @@
     <item>Çıkacak</item>
   </string-array>
   <string-array name="override_font_labels">
-    <item>When no font specified on flashcards</item>
-    <item>Always</item>
+    <item>Bilgi kartlarında font belirtilmediği zaman</item>
+    <item>Her zaman</item>
   </string-array>
 </resources>

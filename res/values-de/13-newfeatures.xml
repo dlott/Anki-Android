@@ -38,4 +38,27 @@
 ~ You should have received a copy of the GNU General Public License along with
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
-<resources/>
+<resources>
+  <string-array name="new_version_features">
+    <item>Neu gestaltetes Layout</item>
+    <item>Bilder und Sounds zu Karten hinzufügen (experimentell)</item>
+    <item>Zweite Spalte in Kartenübersicht anpassbar gemacht</item>
+    <item>Bilder auf Karten zoombar gemacht</item>
+    <item>Vorschau und Zugang über Actionbar verbessert</item>
+    <item>Menüs und Einstellungen vereinfacht</item>
+    <item>Langsame Suchen in Kartenübersicht lassen sich abbrerchen</item>
+    <item>Hinzufügen/Entfernen von Schlagworten verbessert</item>
+    <item>„Antwort eingeben“- und Lückentext-Funktionen verbessert</item>
+    <item>Whiteboard-Funktion verbessert</item>
+    <item>Wiederherstellen von Sicherungen aus der App</item>
+    <item>Hintergrundmusik wird ausgeblendet, wenn Sounds abgespielt werden</item>
+    <item>Abspielen von Sounds an Verhalten der Desktopversion angepasst</item>
+    <item>Animationsfunktionen entfernt, da sie fehlerhaft waren</item>
+    <item>Geschwindigkeit beim Zeigen von Karten erhöht</item>
+    <item>Duplikat-Prüfungs-Dialog beim Hinzufüguen neuer Karteikarten entfernt</item>
+    <item>Tauschen-Schaltfläche beim Hinzufügen oder Bearbeiten von Karten entfernt</item>
+    <item>Kanjiinfofunktion entfernt (wird in Zukunft ein optionales Plug-In)</item>
+    <item>Minimale Android-Version jetzt 2.1</item>
+    <item>Jede Menge Fehler behoben</item>
+  </string-array>
+</resources>

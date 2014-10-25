@@ -196,7 +196,7 @@ public class MultimediaCardEditorActivity extends Activity {
         LayoutParams pars = new LinearLayout.LayoutParams(LayoutParams.WRAP_CONTENT, LayoutParams.WRAP_CONTENT, 1);
 
         Button saveButton = new Button(this);
-        saveButton.setText(getString(R.string.CardEditorSaveButton));
+        saveButton.setText(getString(R.string.dialog_positive_save));
         saveButton.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -674,6 +674,13 @@ public class MultimediaCardEditorActivity extends Activity {
             public void onPostExecute(TaskData result) {
                 // TODO Auto-generated method stub
 
+            }
+
+
+            @Override
+            public void onCancelled() {
+                // TODO Auto-generated method stub
+                
             }
         };
 

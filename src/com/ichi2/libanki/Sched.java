@@ -1564,7 +1564,10 @@ public class Sched {
             int limit = terms.getInt(1);
             int order = terms.getInt(2);
             String orderlimit = _dynOrder(order, limit);
-            search = String.format(Locale.US, "(%s) -is:suspended -is:buried -deck:filtered", search);
+            if (!TextUtils.isEmpty(search.trim())) {
+                search = String.format(Locale.US, "(%s)", search);
+            }
+            search = String.format(Locale.US, "%s -is:suspended -is:buried -deck:filtered", search);
             ids = mCol.findCards(search, orderlimit);
             if (ids.isEmpty()) {
                 return ids;
@@ -1786,16 +1789,7 @@ public class Sched {
             dict.put("resched", conf.getBoolean("resched"));
             return dict;
         } catch (JSONException e) {
-        	if (!mCol.getDecks().isDyn(card.getDid()) && card.getODid() != 0) {
-        		// workaround, if a card's deck is a normal deck, but odid != 0
-        		card.setODue(0);
-        		card.setODid(0);
-        		AnkiDroidApp.saveExceptionReportFile(e, "fixedODidInconsistencyInSched_lapseConf");
-        		// return proper value after having fixed the problem
-        		return _lapseConf(card);
-        	} else {
-	           throw new RuntimeException(e);
-	    }
+            throw new RuntimeException(e);
         }
     }
 

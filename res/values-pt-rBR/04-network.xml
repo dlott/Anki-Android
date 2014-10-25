@@ -40,15 +40,14 @@
 
 -->
 <resources>
-  <string name="connection_needed">Você está offline no momento.</string>
+  <string name="youre_offline">Você está desconectado</string>
   <string name="currently_downloading">Atualmente baixando</string>
   <string name="starting_download">Iniciando download...</string>
   <string name="downloading">Baixando...</string>
   <string name="paused">Em pausa</string>
   <string name="downloaded">Baixado</string>
-  <string name="error">Erro</string>
+  <string name="vague_error">Erro</string>
   <string name="cancelling">Cancelando...</string>
-  <string name="connection_error_title">Atenção</string>
   <string name="connection_error_return_message">Ocorreu um erro de rede. Tente novamente, ou cancele e retorne à tela anterior.</string>
   <string name="retry">Tentar novamente</string>
   <string name="cancel">Cancelar</string>
@@ -65,7 +64,8 @@
   <string name="download_button_return">Voltar</string>
   <string name="connection_error_message">Ocorreu um erro de rede.</string>
   <string name="sync_log_db_error">Ocorreu um erro de banco de dados.</string>
-  <string name="no_user_password_error_message">Para continuar com esta operação, você precisa ter uma conta AnkiWeb e estar logado.</string>
+  <string name="not_logged_in_title">Acessar AnkiWeb</string>
+  <string name="login_create_account_message">Você deve se conectar a uma conta AnkiWeb. Na próxima etapa, você poderá criar uma conta.</string>
   <string name="username">Endereço de e-mail</string>
   <string name="username_repeat">Repita o endereço de e-mail</string>
   <string name="password">Senha</string>
@@ -85,13 +85,12 @@
   <string name="shareddeckpicker_title">Selecione o deck que você deseja baixar</string>
   <string name="downloaddeck_search">Pesquisa</string>
   <string name="preferences_title">Preferências</string>
-  <string name="deckpreferences_title">Preferências de Deck</string>
+  <string name="deckpreferences_title">Options for XXX</string>
   <string name="sync_conflict_message">Seus decks aqui e em AnkiWeb diferem de tal forma que eles não podem ser mesclados juntos, por isso é necessário substituir os decks de um lado com os decks do outro.\n\nDeseja fazer upload dos decks daqui, ou baixar os decks de AnkiWeb?</string>
   <string name="sync_conflict_local">Fazer upload</string>
   <string name="sync_conflict_remote">Baixar</string>
   <string name="sync_conflict_remote_confirm">Você realmente quer baixar a coleção do servidor? Isso irá sobrescrever a sua coleção local.</string>
   <string name="sync_conflict_local_confirm">Você realmente quer fazer upload da coleção local? Isso irá sobrescrever a coleção no servidor.</string>
-  <string name="sync_conflict_cancel">Cancelar sincronização</string>
   <string name="sync_prepare_syncing">Preparando sincronização...</string>
   <string name="sync_preparing_full_sync_message">Preparando sincronização completa...</string>
   <string name="sync_uploading_message">Fazendo upload...</string>
@@ -107,7 +106,7 @@
   <string name="sync_log_old_version">O protocolo de sincronização foi alterado, por favor atualize para o AnkiDroid mais recente. Veja %s</string>
   <string name="sync_conflict_title">Conflito de sincronização</string>
   <string name="sync_no_changes_message">Não foram encontradas alterações.</string>
-  <string name="sync_database_success">Coleção sincronizada com êxito</string>
+  <string name="sync_database_acknowledge">Coleção sincronizada</string>
   <string name="sync_log_error_fix">Ocorreu um erro ao sincronizar %s.\n\n Caso isso ocorra constantemente você pode fazer uma sincronia completa que provavelmente irá consertar o problema. Esteja ciente que isso ou irá sobrescrever sua coleção local ou aquela na AnkiWeb.\n Se desejas realmente fazer uma sincronia completa, por favor escolha se você quer fazer o  upload da sua coleção local ou o download do servidor.</string>
   <string name="sync_log_error_specific">Erro de Sincronização, tipo:%1$s, mensagem:%2$s</string>
   <string name="sync_corrupt_database">Seu banco de dados está corrompido. Por favor corrija-o antes de tentar novamente a sincronização.\n\nVeja %s para obter informações sobre como reparar o banco de dados.</string>

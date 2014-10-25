@@ -35,6 +35,14 @@
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <resources>
+  <string-array name="navigation_titles">
+    <item>Decks</item>
+    <item>Card Browser</item>
+    <item>Statistics</item>
+    <item>Settings</item>
+    <item>Help</item>
+    <item>Send Feedback</item>
+  </string-array>
   <string-array name="newCardSchedulingLabels">
     <item>Fördela bland repetitioner</item>
     <item>Efter genomgång</item>
@@ -53,7 +61,7 @@
     <item>100</item>
     <item>150</item>
     <item>200</item>
-    <item>Never notify</item>
+    <item>Notifiera aldrig</item>
   </string-array>
   <string-array name="cram_review_order_labels">
     <item>Visa äldsta modifierade först</item>
@@ -134,7 +142,7 @@
     <item>Repetera i förväg</item>
     <item>Studera slumpvalda kort</item>
     <item>Förhandsgranska nya kort</item>
-    <item>Begränsa till vissa taggar</item>
+    <item>Begränsa till vissa etiketter</item>
   </string-array>
   <string-array name="add_to_cur_labels">
     <item>Använd nuvarande kortlek</item>
@@ -151,7 +159,7 @@
     <item>Aktuella</item>
   </string-array>
   <string-array name="override_font_labels">
-    <item>When no font specified on flashcards</item>
-    <item>Always</item>
+    <item>När inget typsnitt angetts på flashcard</item>
+    <item>Alltid</item>
   </string-array>
 </resources>

@@ -35,6 +35,14 @@
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <resources>
+  <string-array name="navigation_titles">
+    <item>Paquet</item>
+    <item>Navigateur de carte</item>
+    <item>Statistiques</item>
+    <item>Paramètres</item>
+    <item>Aide</item>
+    <item>Envoyer un commentaire</item>
+  </string-array>
   <string-array name="newCardSchedulingLabels">
     <item>Disperser les cartes inédites dans le paquet</item>
     <item>Après les cartes déjà vues</item>
@@ -53,7 +61,7 @@
     <item>100</item>
     <item>150</item>
     <item>200</item>
-    <item>Never notify</item>
+    <item>Ne jamais afficher de notification</item>
   </string-array>
   <string-array name="cram_review_order_labels">
     <item>Les plus anciennement modifiées</item>
@@ -151,7 +159,7 @@
     <item>À faire</item>
   </string-array>
   <string-array name="override_font_labels">
-    <item>When no font specified on flashcards</item>
-    <item>Always</item>
+    <item>Lorsque aucune police n\'est spécifié sur la carte</item>
+    <item>Toujours</item>
   </string-array>
 </resources>

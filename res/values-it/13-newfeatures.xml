@@ -38,4 +38,27 @@
 ~ You should have received a copy of the GNU General Public License along with
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
-<resources/>
+<resources>
+  <string-array name="new_version_features">
+    <item>Ridisegnato l\'interfaccia</item>
+    <item>Aggiungere immagini e suoni alle carte (sperimentale)</item>
+    <item>La seconda colonna nel browser delle carte è ora configurabile</item>
+    <item>È possibile eseguire lo zoom delle immagini sulle carte</item>
+    <item>Funzionalità anteprima migliorata e accesso tramite barra di azione</item>
+    <item>Menù e impostazioni semplificati</item>
+    <item>Ricerche lunghe nel browser delle carte sono ora annullabili</item>
+    <item>Migliorata l\'aggiunta/rimozione di etichette</item>
+    <item>Migliorato le funzioni di digitazione della risposta e di testo da completare</item>
+    <item>Migliorato funzione lavagna</item>
+    <item>Ripristino di backup con l\'app</item>
+    <item>Riduzione del volume di qualsiasi musica di sottofondo durante la riproduzione di suoni</item>
+    <item>Riproduzione di suoni resa coerente con la versione Desktop</item>
+    <item>Rimosso animazioni a causa di errori</item>
+    <item>Migliorata la velocità nel mostrare le carte</item>
+    <item>Rimossa la finestra di dialogo controllo duplicati durante l\'aggiunta di nuove carte</item>
+    <item>Rimosso il tasto di scambio durante l\'aggiunta o modifica di carte</item>
+    <item>Rimosse le informazioni kanji (diventerà un plugin opzionale in futuro)</item>
+    <item>La versione minima di Android è ora 2.1</item>
+    <item>Corretti molti errori</item>
+  </string-array>
+</resources>

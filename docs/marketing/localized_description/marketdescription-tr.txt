@@ -1,12 +1,12 @@
 AnkiDroid'le istediğiniz şeyi ezberleyin!
 
-AnkiDroid bilgi kartlarını siz unutmadan hemen önce göstererek çok etkili bir biçimde öğrenmenizi sağlar. Windows, Linux ve MacOS için mevcut olan aralıklı yineleme yazılımı Anki ile tamamen uyumludur (eşitleme dâhil).
+AnkiDroid bilgi kartlarını siz unutmadan hemen önce göstererek çok etkili bir biçimde öğrenmenizi sağlar. Windows, Linux ve MacOS için mevcut olan aralıklı yineleme yazılımı Anki ile tamamen uyumludur. (senkronizasyon dâhil)
 
 Her türlü şeyi istediğiniz yerde, istediğiniz zaman çalışın. Otobüs yolculuklarında, market kuyruklarında veya başka herhangi bir bekleme durumunda boş zamanınızı iyi değerlendirin!
 
 Kendi bilgi kartı destelerinizi oluşturun veya birçok dil ve konu için hazırlanmış ücretsiz desteleri indirin (6000'den fazla mevcut).
 
-Masaüstü uygulaması Anki veya doğrudan Ankidroid yoluyla malzeme ekleyin Uygulama bir sözlükten otomatik olarak malzeme eklemeyi bile destekler!
+Masaüstü uygulaması Anki veya doğrudan AnkiDroid yoluyla malzeme ekleyin. Uygulama bir sözlükten otomatik olarak malzeme eklemeyi bile destekler!
 
 ★ Anahtar özellikler:
 • desteklenen bilgi kartı içerikleri: yazı, resim, ses, LaTeX
@@ -29,8 +29,8 @@ Masaüstü uygulaması Anki veya doğrudan Ankidroid yoluyla malzeme ekleyin Uyg
 • sözlük gibi diğer uygulamalardan istek tabanlı kart ekleme
 • hâricî yazı tipi desteği
 • tam yedekleme sistemi
-• navigation by swipe, tap
-• customisable
+• dokunma ve kaydırmalarla gezinme
+• kişiselleştirilebilir
 • dinamik deste kullanımı
 • gece modu
 • 27 dil seçeneği

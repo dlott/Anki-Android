@@ -19,6 +19,8 @@
 
 package com.ichi2.utils;
 
+import com.ichi2.anki.AnkiDroidApp;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -29,6 +31,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.Stack;
 import java.util.regex.Pattern;
+
 
 /**
  * Functions for diff, match and patch. Computes the difference between two texts to create a patch. Applies the patch
@@ -1091,15 +1094,18 @@ public class DiffEngine {
     }
 
     public static String wrapBad(String in) {
-        return "<span class=\"typeBad\">" + in + "</span>";
+        // We do the comparison with “<”s &c. in the strings, but should of course not just put those in the HTML
+        // output. Also, it looks like the Android WebView swallows single “\”s, so replace those with the entity by
+        // hand.
+        return "<span class=\"typeBad\">" + AnkiDroidApp.getCompat().detagged(in).replace("\\", "&#x5c;") + "</span>";
     }
 
     public static String wrapGood(String in) {
-        return "<span class=\"typeGood\">" + in + "</span>";
+        return "<span class=\"typeGood\">" + AnkiDroidApp.getCompat().detagged(in).replace("\\", "&#x5c;") + "</span>";
     }
 
     public static String wrapMissing(String in) {
-        return "<span class=\"typeMissed\">" + in + "</span>";
+        return "<span class=\"typeMissed\">" + AnkiDroidApp.getCompat().detagged(in).replace("\\", "&#x5c;") + "</span>";
     }
 
 

@@ -160,6 +160,8 @@ public class Info extends ActionBarActivity {
                     case TYPE_WELCOME:
                         AnkiDroidApp.getSharedPrefs(Info.this.getBaseContext()).edit()
                                 .putLong("lastTimeOpened", System.currentTimeMillis()).commit();
+                        AnkiDroidApp.getSharedPrefs(Info.this.getBaseContext()).edit()
+                                .putString("lastVersion", AnkiDroidApp.getPkgVersionName()).commit();
                         break;
                     case TYPE_NEW_VERSION:
                         AnkiDroidApp.getSharedPrefs(Info.this.getBaseContext()).edit()
@@ -219,6 +221,7 @@ public class Info extends ActionBarActivity {
                         setResult(RESULT_OK);
                         Editor edit = AnkiDroidApp.getSharedPrefs(Info.this.getBaseContext()).edit();
                         edit.putLong("lastTimeOpened", System.currentTimeMillis());
+                        edit.putString("lastVersion", AnkiDroidApp.getPkgVersionName()).commit();
                         edit.putBoolean("createTutorial", true);
                         edit.commit();
                         finishWithAnimation();
@@ -990,6 +993,13 @@ public class Info extends ActionBarActivity {
         @Override
         public void onProgressUpdate(DeckTask.TaskData... values) {
             mProgressDialog.setMessage(values[0].getString());
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
         }
     };
 

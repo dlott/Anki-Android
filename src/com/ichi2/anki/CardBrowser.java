@@ -24,16 +24,16 @@ import android.content.BroadcastReceiver;
 import android.content.Context;
 import android.content.DialogInterface;
 import android.content.DialogInterface.OnCancelListener;
-import android.content.DialogInterface.OnClickListener;
 import android.content.Intent;
 import android.content.IntentFilter;
 import android.content.SharedPreferences;
 import android.content.res.Resources;
 import android.graphics.Typeface;
 import android.os.Bundle;
+import android.support.v4.app.DialogFragment;
 import android.support.v4.view.MenuItemCompat;
+import android.support.v4.widget.DrawerLayout;
 import android.support.v7.app.ActionBar;
-import android.support.v7.app.ActionBarActivity;
 import android.support.v7.widget.SearchView;
 import android.util.Log;
 import android.util.TypedValue;
@@ -50,14 +50,13 @@ import android.widget.AdapterView.OnItemLongClickListener;
 import android.widget.AdapterView.OnItemSelectedListener;
 import android.widget.ArrayAdapter;
 import android.widget.BaseAdapter;
-
-import android.widget.CompoundButton;
-import android.widget.CompoundButton.OnCheckedChangeListener;
 import android.widget.ListView;
 import android.widget.Spinner;
 import android.widget.TextView;
 
 import com.ichi2.anim.ActivityTransitionAnimation;
+import com.ichi2.anki.dialogs.TagsDialog;
+import com.ichi2.anki.dialogs.TagsDialog.TagsDialogListener;
 import com.ichi2.anki.multimediacard.activity.MultimediaCardEditorActivity;
 import com.ichi2.anki.receiver.SdCardReceiver;
 import com.ichi2.async.DeckTask;
@@ -80,11 +79,11 @@ import org.json.JSONObject;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-public class CardBrowser extends ActionBarActivity implements ActionBar.OnNavigationListener {
+public class CardBrowser extends NavigationDrawerActivity implements ActionBar.OnNavigationListener {
 
     // private List<Long> mCardIds = new ArrayList<Long>();
     private ArrayList<HashMap<String, String>> mCards;
@@ -101,9 +100,9 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     private StyledProgressDialog mProgressDialog;
     private StyledOpenCollectionDialog mOpenCollectionDialog;
-    private StyledDialog mTagsDialog;
-
+    
     public static Card sCardBrowserCard;
+    public static boolean sSearchCancelled = false;
 
     private int mPositionInCardsList;
 
@@ -171,8 +170,6 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     private String[] allTags;
     private String[] mColumn2Indexs;
-    private HashSet<String> mSelectedTags;
-
     /**
      * Broadcast that informs us when the sd card is about to be unmounted
      */
@@ -251,6 +248,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
         View mainView = getLayoutInflater().inflate(R.layout.card_browser, null);
         setContentView(mainView);
         Themes.setContentStyle(mainView, Themes.CALLER_CARDBROWSER);
+        
+        // Create inherited navigation drawer layout here so that it can be used by parent class
+        mDrawerLayout = (DrawerLayout) findViewById(R.id.browser_drawer_layout);
+        mDrawerList = (ListView) findViewById(R.id.browser_left_drawer);
+        initNavigationDrawer();
+        selectNavigationItem(DRAWER_BROWSER);
+        
         // Try to load the collection
         mCol = AnkiDroidApp.getCol();
         if (mCol == null) {
@@ -266,7 +270,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     // Finish initializing the activity after the collection has been correctly loaded
     private void initActivity(Collection col) {
-
+        Log.i(AnkiDroidApp.TAG, "Card Browser - initActivity()");
         mDeckNames = new HashMap<String, String>();
         for (long did : mCol.getDecks().allIds()) {
             mDeckNames.put(String.valueOf(did), mCol.getDecks().name(did));
@@ -310,7 +314,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
         } catch (JSONException e) {
             throw new RuntimeException(e);
         }
-
+        
         mCards = new ArrayList<HashMap<String, String>>();
         mCardsListView = (ListView) findViewById(R.id.card_browser_list);
         // Create a spinner for column1, but without letting the user change column
@@ -395,7 +399,6 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
         getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
 
-        mSelectedTags = new HashSet<String>();
         // initialize mSearchTerms to a default value
         mSearchTerms = "";
 
@@ -427,6 +430,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     @Override
     protected void onStop() {
+        Log.i(AnkiDroidApp.TAG, "CardBrowser - onStop()");
         super.onStop();
         if (!isFinishing()) {
             WidgetStatus.update(this);
@@ -437,13 +441,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     @Override
     protected void onDestroy() {
+        Log.i(AnkiDroidApp.TAG, "CardBrowser - onDestroy()");
         // cancel rendering the question and answer, which has shared access to mCards
         DeckTask.cancelTask(DeckTask.TASK_TYPE_RENDER_BROWSER_QA);
         super.onDestroy();
         if (mUnmountReceiver != null) {
             unregisterReceiver(mUnmountReceiver);
         }
-        Log.i(AnkiDroidApp.TAG, "CardBrowser - onDestroy()");
     }
 
 
@@ -451,18 +455,17 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
     public boolean onKeyDown(int keyCode, KeyEvent event) {
         if (keyCode == KeyEvent.KEYCODE_BACK && event.getRepeatCount() == 0) {
             Log.i(AnkiDroidApp.TAG, "CardBrowser - onBackPressed()");
-            if (mSearchView.getQuery().toString().length() == 0) {
-                // close the browser
-                closeCardBrowser(Activity.RESULT_OK);
-            } else {
-                mSearchView.setQuery("", false);
-                mSearchView.setQueryHint(getResources().getString(R.string.downloaddeck_search));
-                mSelectedTags.clear();
-            }
+            closeCardBrowser(Activity.RESULT_OK);
             return true;
         }
 
         return super.onKeyDown(keyCode, event);
+    }
+    
+    @Override
+    protected void onResume() {
+        super.onResume();
+        selectNavigationItem(DRAWER_BROWSER);
     }
 
 
@@ -513,6 +516,12 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     @Override
     public boolean onOptionsItemSelected(MenuItem item) {
+        // The action bar home/up action should open or close the drawer.
+        // ActionBarDrawerToggle will take care of this.
+        if (mDrawerToggle.onOptionsItemSelected(item)) {
+            return true;
+        }    	
+    	
         switch (item.getItemId()) {
 
             case R.id.action_add_card_from_card_browser:
@@ -541,7 +550,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
                 return true;
 
             case R.id.action_search_by_tag:
-                showDialog(DIALOG_TAGS);
+                showDialogFragment(DIALOG_TAGS);
                 return true;
 
             default:
@@ -554,6 +563,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         // FIXME:
+        Log.i(AnkiDroidApp.TAG, "CardBrowser - onActivityResult()");
         super.onActivityResult(requestCode, resultCode, data);
 
         if (resultCode == DeckPicker.RESULT_DB_ERROR) {
@@ -579,6 +589,61 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
         }
     }
 
+    private DialogFragment showDialogFragment(int id) {
+        DialogFragment dialogFragment = null;
+        String tag = null;
+        switch(id) {
+            case DIALOG_TAGS:
+                allTags = mCol.getTags().all().toArray(new String[0]);
+
+                TagsDialog dialog = com.ichi2.anki.dialogs.TagsDialog.newInstance(
+                    TagsDialog.TYPE_FILTER_BY_TAG, new ArrayList<String>(), new ArrayList<String>(mCol.getTags().all()));
+                dialog.setTagsDialogListener(new TagsDialogListener() {                    
+                    @Override
+                    public void onPositive(List<String> selectedTags, int option) {
+                        mSearchView.setQuery("", false);
+                        String tags = selectedTags.toString();
+                        mSearchView.setQueryHint(getResources().getString(R.string.card_browser_tags_shown,
+                                tags.substring(1, tags.length() - 1)));
+                        StringBuilder sb = new StringBuilder();
+                        switch (option) {
+                            case 1:
+                                sb.append("is:new ");
+                                break;
+                            case 2:
+                                sb.append("is:due ");
+                                break;
+                            default:
+                                // Logging here might be appropriate : )
+                                break;
+                        }
+                        int i = 0;
+                        for (String tag : selectedTags) {
+                            if (i != 0) {
+                                sb.append("or ");
+                            } else {
+                                sb.append("("); // Only if we really have selected tags
+                            }
+                            sb.append("tag:").append(tag).append(" ");
+                            i++;
+                        }
+                        if (i > 0) {
+                            sb.append(")"); // Only if we added anything to the tag list
+                        }
+                        mSearchTerms = sb.toString();
+                        searchCards();
+                    }
+                });
+                dialogFragment = dialog;
+                break;
+            default:
+                break;
+        }
+        
+
+        dialogFragment.show(getSupportFragmentManager(), tag);
+        return dialogFragment;
+    }
 
     @Override
     protected Dialog onCreateDialog(int id) {
@@ -646,61 +711,6 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
                 builder.setItems(entries, mContextMenuListener);
                 dialog = builder.create();
                 break;
-
-            case DIALOG_TAGS:
-                allTags = mCol.getTags().all().toArray(new String[0]);
-                builder.setTitle(R.string.studyoptions_limit_select_tags);
-                builder.setMultiChoiceItems(allTags, new boolean[allTags.length],
-                        new DialogInterface.OnClickListener() {
-                            @Override
-                            public void onClick(DialogInterface dialog, int which) {
-                                String tag = allTags[which];
-                                if (mSelectedTags.contains(tag)) {
-                                    Log.i(AnkiDroidApp.TAG, "unchecked tag: " + tag);
-                                    mSelectedTags.remove(tag);
-                                } else {
-                                    Log.i(AnkiDroidApp.TAG, "checked tag: " + tag);
-                                    mSelectedTags.add(tag);
-                                }
-                            }
-                        }, new OnCheckedChangeListener() {
-                            @Override
-                            public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                                mTagsDialog.setItemListChecked(isChecked);
-                                mSelectedTags = new HashSet<String>(mTagsDialog.getCheckedItems());
-                            }
-                        });
-                builder.setPositiveButton(res.getString(R.string.select), new OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mSearchView.setQuery("", false);
-                        String tags = mSelectedTags.toString();
-                        mSearchView.setQueryHint(getResources().getString(R.string.card_browser_tags_shown,
-                                tags.substring(1, tags.length() - 1)));
-                        StringBuilder sb = new StringBuilder();
-                        for (String tag : mSelectedTags) {
-                            sb.append("tag:").append(tag).append(" ");
-                        }
-                        mSearchTerms = sb.toString();
-                        searchCards();
-                    }
-                });
-                builder.setNegativeButton(res.getString(R.string.dialog_cancel), new OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        mSelectedTags.clear();
-                    }
-                });
-                builder.setOnCancelListener(new OnCancelListener() {
-
-                    @Override
-                    public void onCancel(DialogInterface dialog) {
-                        mSelectedTags.clear();
-                    }
-                });
-                mTagsDialog = builder.create();
-                dialog = mTagsDialog;
-                break;
         }
         return dialog;
     }
@@ -741,35 +751,15 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
                 }
                 ad.setTitle(card.get("sfld"));
                 break;
-            case DIALOG_TAGS:
-                mSelectedTags.clear();
-                ad.setMultiChoiceItems(allTags, new boolean[allTags.length], new DialogInterface.OnClickListener() {
-                    @Override
-                    public void onClick(DialogInterface dialog, int which) {
-                        String tag = allTags[which];
-                        if (mSelectedTags.contains(tag)) {
-                            Log.d(AnkiDroidApp.TAG, "unchecked tag: " + tag);
-                            mSelectedTags.remove(tag);
-                        } else {
-                            Log.d(AnkiDroidApp.TAG, "checked tag: " + tag);
-                            mSelectedTags.add(tag);
-                        }
-                    }
-                }, new OnCheckedChangeListener() {
-                    @Override
-                    public void onCheckedChanged(CompoundButton buttonView, boolean isChecked) {
-                        mTagsDialog.setItemListChecked(isChecked);
-                        mSelectedTags = new HashSet<String>(mTagsDialog.getCheckedItems());
-                    }
-                });
-                break;
         }
     }
 
 
     @Override
     public boolean onNavigationItemSelected(int position, long itemId) {
-        SharedPreferences preferences = AnkiDroidApp.getSharedPrefs(getBaseContext());
+        // cancel rendering the question and answer, which has shared access to mCards
+        DeckTask.cancelTask(DeckTask.TASK_TYPE_RENDER_BROWSER_QA);
+        
         if (position == 0) {
             mRestrictOnDeck = "";
         } else {
@@ -785,12 +775,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             mRestrictOnDeck = "deck:'" + deckName + "' ";
             AnkiDroidApp.getCol().getDecks().select(deckId);
         }
-        if (preferences.getBoolean("cardBrowserNoSearchOnOpen", false)) {
-            mCards.clear();
-            updateList();
-        } else {
-            searchCards();
-        }
+        searchCards();
         return true;
     }
 
@@ -802,7 +787,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             mCards.clear();
             // Perform database query to get all card ids / sfld. Shows "filtering cards..." progress message
             DeckTask.launchDeckTask(DeckTask.TASK_TYPE_SEARCH_CARDS, mSearchCardsHandler, new DeckTask.TaskData(
-                    new Object[] { mCol, mDeckNames, searchText, ((mOrder == CARD_ORDER_NONE) ? "" : "true") }));
+                    new Object[] { mCol, mDeckNames, searchText, ((mOrder == CARD_ORDER_NONE) ? false : true) }));
         }
     }
 
@@ -843,12 +828,22 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             @Override
             public void onProgressUpdate(DeckTask.TaskData... values) {
             }
+
+
+            @Override
+            public void onCancelled() {
+                // TODO Auto-generated method stub
+                
+            }
         }, new DeckTask.TaskData(AnkiDroidApp.getCurrentAnkiDroidDirectory() + AnkiDroidApp.COLLECTION_PATH));
     }
 
 
     private void updateList() {
         mCardsAdapter.notifyDataSetChanged();
+        int count = mCards.size();
+        mDropDownAdapter.setCardCount(count);
+        mDropDownAdapter.notifyDataSetChanged();
     }
 
 
@@ -978,11 +973,19 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
         @Override
         public void onPostExecute(DeckTask.TaskData result) {
+            Log.i(AnkiDroidApp.TAG, "Card Browser - mUpdateCardHandler.onPostExecute()");
             if (!result.getBoolean()) {
                 closeCardBrowser(DeckPicker.RESULT_DB_ERROR);
             }
             mProgressDialog.dismiss();
 
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
         }
     };
 
@@ -1014,6 +1017,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             mProgressDialog.dismiss();
 
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
+        }
     };
 
     private DeckTask.TaskListener mDeleteNoteHandler = new DeckTask.TaskListener() {
@@ -1035,6 +1045,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             mProgressDialog.dismiss();
 
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
+        }
     };
 
     private DeckTask.TaskListener mSearchCardsHandler = new DeckTask.TaskListener() {
@@ -1051,7 +1068,15 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             Resources res = getResources();
             if (mProgressDialog == null) {
                 mProgressDialog = StyledProgressDialog.show(CardBrowser.this, "",
-                        res.getString(R.string.card_browser_filtering_cards), true);
+                        res.getString(R.string.card_browser_filtering_cards), true, true,
+                        new DialogInterface.OnCancelListener(){
+                            @Override
+                            public void onCancel(DialogInterface dialog){
+                                Log.i(AnkiDroidApp.TAG, "Search cards dialog dismissed");
+                                DeckTask.cancelTask(DeckTask.TASK_TYPE_SEARCH_CARDS);
+                                sSearchCancelled = true;
+                            }
+                });
             } else {
                 mProgressDialog.setMessage(res.getString(R.string.card_browser_filtering_cards));
                 mProgressDialog.show();
@@ -1061,16 +1086,29 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
 
         @Override
-        public void onPostExecute(TaskData result) {
-            Log.i(AnkiDroidApp.TAG, "Completed doInBackgroundSearchCards Successfuly");
-            mTotalCount = result.getInt();
-            updateList();
-            if (mProgressDialog != null && mProgressDialog.isShowing()) {
-                mProgressDialog.dismiss();
+        public void onPostExecute(TaskData result) {            
+            if (result != null) {
+                Log.i(AnkiDroidApp.TAG, "Completed doInBackgroundSearchCards Successfuly");
+                mTotalCount = result.getInt();
+                updateList();
+                if (mProgressDialog != null && mProgressDialog.isShowing()) {
+                    mProgressDialog.dismiss();
+                }
+                // After the initial searchCards query, start rendering the question and answer in the background
+                DeckTask.launchDeckTask(DeckTask.TASK_TYPE_RENDER_BROWSER_QA, mRenderQAHandler, new DeckTask.TaskData(
+                        new Object[] { mCol, mCards }));
+            } else {
+                // this is a hack -- see DeckTask.launchDeckTask for more info
+                Log.i(AnkiDroidApp.TAG, "doInBackgroundSearchCards onPostExecute() called but result was null");
+                sSearchCancelled = false;
             }
-            // After the initial searchCards query, start rendering the question and answer in the background
-            DeckTask.launchDeckTask(DeckTask.TASK_TYPE_RENDER_BROWSER_QA, mRenderQAHandler, new DeckTask.TaskData(
-                    new Object[] { mCol, mCards }));
+        }
+        
+        @Override
+        public void onCancelled(){
+            // reset the hacky static variable which Finder is listening to check if main thread has requested cancellation
+            Log.i(AnkiDroidApp.TAG, "doInBackgroundSearchCards onCancelled() called");
+            sSearchCancelled = false;
         }
     };
 
@@ -1094,6 +1132,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
                 // Might want to do something more proactive here like show a message box?
                 Log.e(AnkiDroidApp.TAG, "doInBackgroundRenderBrowserQA was not successful... continuing anyway");
             }
+        }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
         }
     };
 
@@ -1124,6 +1169,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
             mCards.addAll(result.getCards());
             updateList();
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
+        }
     };
 
     private DeckTask.TaskListener mSortCardsHandler = new DeckTask.TaskListener() {
@@ -1152,6 +1204,13 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
                 mProgressDialog.dismiss();
             }
         }
+
+
+        @Override
+        public void onCancelled() {
+            // TODO Auto-generated method stub
+            
+        }
     };
 
 
@@ -1162,8 +1221,7 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
     private void closeCardBrowser(int result) {
         setResult(result);
-        finish();
-        ActivityTransitionAnimation.slide(this, ActivityTransitionAnimation.RIGHT);
+        finishWithAnimation(ActivityTransitionAnimation.RIGHT);
     }
 
     private final class MultiColumnListAdapter extends BaseAdapter {
@@ -1288,10 +1346,18 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
         }
     }
 
+
+    private static class DeckDropDownViewHolder {
+        public TextView deckNameView;
+        public TextView deckCountsView;
+    }
+
+
     private final class DeckDropDownAdapter extends BaseAdapter {
 
         private Context context;
         private ArrayList<JSONObject> decks;
+        private int count;
 
 
         public DeckDropDownAdapter(Context context, ArrayList<JSONObject> decks) {
@@ -1324,6 +1390,40 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
 
         @Override
         public View getView(int position, View convertView, ViewGroup parent) {
+            DeckDropDownViewHolder viewHolder;
+            TextView deckNameView;
+            TextView deckCountsView;
+            if (convertView == null) {
+                convertView = LayoutInflater.from(context).inflate(R.layout.dropdown_deck_selected_item, parent, false);
+                deckNameView = (TextView) convertView.findViewById(R.id.dropdown_deck_name);
+                deckCountsView = (TextView) convertView.findViewById(R.id.dropdown_deck_counts);
+                viewHolder = new DeckDropDownViewHolder();
+                viewHolder.deckNameView = deckNameView;
+                viewHolder.deckCountsView = deckCountsView;
+                convertView.setTag(viewHolder);
+            } else {
+                viewHolder = (DeckDropDownViewHolder) convertView.getTag();
+                deckNameView = (TextView) viewHolder.deckNameView;
+                deckCountsView = (TextView) viewHolder.deckCountsView;
+            }
+            if (position == 0) {
+                deckNameView.setText(context.getResources().getString(R.string.deck_summary_all_decks));
+            } else {
+                JSONObject deck = decks.get(position - 1);
+                try {
+                    String deckName = deck.getString("name");
+                    deckNameView.setText(deckName);
+                } catch (JSONException ex) {
+                    new RuntimeException();
+                }
+            }
+            deckCountsView.setText(getResources().getQuantityString(R.plurals.card_browser_subtitle, count, count));
+            return convertView;
+        }
+
+
+        @Override
+        public View getDropDownView(int position, View convertView, ViewGroup parent) {
             TextView deckNameView;
             if (convertView == null) {
                 convertView = LayoutInflater.from(context).inflate(R.layout.dropdown_deck_item, parent, false);
@@ -1344,6 +1444,11 @@ public class CardBrowser extends ActionBarActivity implements ActionBar.OnNaviga
                 }
             }
             return convertView;
+        }
+
+
+        public void setCardCount(int count) {
+            this.count = count;
         }
 
     }

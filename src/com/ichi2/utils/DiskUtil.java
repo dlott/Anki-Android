@@ -29,7 +29,7 @@ public class DiskUtil {
     public static File getStoringDirectory() {
 
         Collection col = AnkiDroidApp.getCol();
-        String mediaDir = col.getMedia().getDir() + "/";
+        String mediaDir = col.getMedia().dir() + "/";
 
         return new File(mediaDir);
     }

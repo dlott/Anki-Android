@@ -893,10 +893,9 @@ public class Models {
     }
 
 
-    // not in libanki
+    // originally from anki.template.template
     // Handle fields fetched from templates and any anki-specific formatting
     protected static final String clozeReg = "\\{\\{c%s::(.*?)(::(.*?))?\\}\\}";
-
     protected static class fieldParser implements Mustache.VariableFetcher {
         private Map<String, String> _fields;
 
@@ -967,21 +966,32 @@ public class Models {
 
         private static String clozeText(String txt, String ord, char type) {
             Matcher m = Pattern.compile(String.format(Locale.US, clozeReg, ord)).matcher(txt);
-            if (!m.find()) {
+            StringBuffer rep = new StringBuffer();
+            Boolean found = false;
+
+            while (m.find()) {
+                found = true;
+                // replace chozen cloze with type
+                if (type == 'q') {
+                    if (m.group(3) != null && m.group(3).length() != 0) {
+                        m.appendReplacement(rep, "<span class=cloze>[$3]</span>");
+                    } else {
+                        m.appendReplacement(rep, "<span class=cloze>[...]</span>");
+                    }
+                } else {
+                    m.appendReplacement(rep, "<span class=cloze>$1</span>");
+                }
+            }
+
+            if (found) {
+                m.appendTail(rep);
+
+                // and display other clozes normally
+                return rep.toString().replaceAll(String.format(Locale.US, clozeReg, ".*?"), "$1");
+            }
+            else {
                 return "";
             }
-            // replace chozen cloze with type
-            if (type == 'q') {
-                if (m.group(3) != null && m.group(3).length() != 0) {
-                    txt = m.replaceAll("<span class=cloze>[$3]</span>");
-                } else {
-                    txt = m.replaceAll("<span class=cloze>[...]</span>");
-                }
-            } else {
-                txt = m.replaceAll("<span class=cloze>$1</span>");
-            }
-            // and display other clozes normally
-            return txt.replaceAll(String.format(Locale.US, clozeReg, ".*?"), "$1");
         }
     }
 

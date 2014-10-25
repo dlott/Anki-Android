@@ -35,6 +35,14 @@
 ~ this program.  If not, see <http://www.gnu.org/licenses/>.
 -->
 <resources>
+  <string-array name="navigation_titles">
+    <item>Decks</item>
+    <item>Card Browser</item>
+    <item>Statistics</item>
+    <item>Settings</item>
+    <item>Help</item>
+    <item>Send Feedback</item>
+  </string-array>
   <string-array name="newCardSchedulingLabels">
     <item>Espallar entre os repasos</item>
     <item>Tras os repasos</item>
@@ -99,13 +107,13 @@
     <item>Bury card</item>
     <item>Suspend card</item>
     <item>Delete card</item>
-    <item>Clear Whiteboard</item>
+    <item>Clear whiteboard</item>
     <item>Play media</item>
     <item>Abort learning</item>
   </string-array>
   <string-array name="theme_labels">
-    <item>Android Dark</item>
-    <item>Android Light</item>
+    <item>Android dark</item>
+    <item>Android light</item>
     <item>Azul</item>
     <item>White</item>
   </string-array>
